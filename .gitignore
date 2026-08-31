@@ -3,6 +3,9 @@ __pycache__/
 *.py[codz]
 *$py.class
 
+# vLLM
+data/raw/vllm-0.10.1/*
+
 # C extensions
 *.so
 
