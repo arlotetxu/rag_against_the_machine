@@ -2,9 +2,10 @@ import os
 import re
 from pathlib import Path
 from pydantic import BaseModel
+from tqdm import tqdm
 from entities.minimal_source import MinimalSource
 import tree_sitter_python as tspython
-from tree_sitter import Language, Parser
+from tree_sitter import Language, Parser, Node
 from icecream import ic
 
 
@@ -42,6 +43,44 @@ class Indexer:
         text = re.sub(r'([_\-])', ' ', text)
         return text
 
+    def add_imports_py_chunks(
+            self, py_path: str, data_bytes: bytes, childrens: list[Node]
+            ) -> None:
+        children_imports = [
+            children for children in childrens if children.type in [
+                'import_statement', 'import_from_statement']]
+        if children_imports:
+            start = min(
+                children.start_byte for children in children_imports)
+            end = max(
+                children.end_byte for children in children_imports)
+            diff = end - start
+            if diff:
+                while diff > self.max_chunk_size:
+                    # ic(data[start: start + self.max_chunk_size])
+                    self.chunks[f"py_{self.chunk_id}"] = IndexedChunk(
+                        text=data_bytes[
+                            start: start + self.max_chunk_size].decode('utf8'),
+                        metadata= MinimalSource(
+                            file_path=py_path,
+                            first_character_index=start,
+                            last_character_index=start + self.max_chunk_size)
+                    )
+                    self.chunk_id += 1
+                    # ic("===" * 30)
+                    start = start + self.max_chunk_size
+                    diff -= self.max_chunk_size
+
+        # print(data[start:end])
+        self.chunks[f"py_{self.chunk_id}"] = IndexedChunk(
+                    text=data_bytes[start: end].decode('utf8'),
+                    metadata= MinimalSource(
+                        file_path=py_path,
+                        first_character_index=start,
+                        last_character_index=end)
+        )
+        self.chunk_id += 1
+        # print("===" * 30)
 
     def chunk_py(self):
         """
@@ -60,7 +99,8 @@ class Indexer:
         parser = Parser(py_language)
 
         try:
-            for _, py_path in py_docs.items():
+            for _, py_path in tqdm(
+                py_docs.items(), desc="Chunking .py files", position=100):
                 with open(py_path, mode='r', encoding='utf8') as fd:
                     data = fd.read()
                 data_bytes = data.encode('utf8')
@@ -70,19 +110,69 @@ class Indexer:
                 root_node = tree.root_node
                 # Getting the childrens from the root node
                 childrens = root_node.children
+
+                ##### Unifying import segment in one chunk ### REFACTOR
+                # children_imports = [
+                #     children for children in childrens if children.type in [
+                #         'import_statement', 'import_from_statement']]
+                # import_start = min(
+                #     children.start_byte for children in children_imports)
+                # import_end = max(
+                #     children.end_byte for children in children_imports)
+                # diff = import_end - import_start
+                # if diff:
+                #     while diff > self.max_chunk_size:
+                #         print(data[import_start: import_start + self.max_chunk_size])
+                #         print("===" * 30)
+                #         import_start = import_start + self.max_chunk_size
+                #         diff -= self.max_chunk_size
+
+                # print(data[import_start:import_end])
+                # print("===" * 30)
+                self.add_imports_py_chunks(py_path, data_bytes, childrens)
+                ##############################################
+
                 for children in childrens:
+                    if children.type in [
+                        'import_statement', 'import_from_statement']:
+                        continue
                     start = children.start_byte
                     end = children.end_byte
-                    print(data[start:end])
-                    print("===" * 30)
-
-
-
+                    diff = end - start
+                    if diff:
+                        while diff > self.max_chunk_size:
+                            # print(data[start: start + self.max_chunk_size])
+                            self.chunks[f"py_{self.chunk_id}"] = IndexedChunk(
+                                text=data_bytes[
+                                    start: start + self.max_chunk_size].decode(
+                                        'utf8'),
+                                metadata=MinimalSource(
+                                    file_path=py_path,
+                                    first_character_index=start,
+                                    last_character_index=start +
+                                    self.max_chunk_size
+                                )
+                            )
+                            self.chunk_id += 1
+                            # print("===" * 30)
+                            start = start + self.max_chunk_size
+                            diff -= self.max_chunk_size
+                    # print(data[start:end])
+                    self.chunks[f"py_{self.chunk_id}"] = IndexedChunk(
+                        text=data_bytes[start:end].decode('utf8'),
+                        metadata=MinimalSource(
+                            file_path=py_path,
+                            first_character_index=start,
+                            last_character_index=end
+                            )
+                        )
+                    self.chunk_id += 1
+                    # print("===" * 30)
 
         except (FileNotFoundError, PermissionError) as e:
             print(e)
-
-        print(self.chunks)
+        # ic(self.chunks)
+        ic(len(self.chunks))
 
     # def chunk_md(self):
     #     md_docs = {id: doc_path for id, doc_path in self.files_lst.items() if self.get_extension(doc_path) == '.md'}
@@ -93,8 +183,9 @@ class Indexer:
     #     # ic(json_docs)
 
     def chunk_others(self):
-        generic_docs = {id: doc_path for id, doc_path in self.files_lst.items() if self.get_extension(doc_path) != '.py'}
-        ic("From chunk_others")
+        generic_docs = {id: doc_path for id, doc_path in self.files_lst.items()
+                        if self.get_extension(doc_path) != '.py'}
+        print("From chunk_others")
         # ic(generic_docs)
 
 def test_function():

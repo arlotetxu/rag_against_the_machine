@@ -7,6 +7,7 @@ requires-python = ">=3.13"
 dependencies = [
     "fire>=0.7.1",
     "icecream>=2.2.0",
+    "pre-commit>=4.6.2",
     "pydantic>=2.13.5",
     "tqdm>=4.70.0",
     "tree-sitter>=0.26.0",
