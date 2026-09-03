@@ -34,13 +34,16 @@ def get_py_code(py_path: str):
     # ic(childrens)
     # ic(type(childrens))
 
-    code_bloks = []
+    children_types = []
     last_char = 0
     for children in childrens:
+        if children.type not in children_types:
+            children_types.append(children.type)
         ic(children.type)
         ic(children.byte_range)  # inicio y fin de cada children en caracteres
         ic(children.start_byte)  # posicion de inicio del cada children
-        ic(children.text)  # bloque de codigo
+        print(children.text)  # bloque de codigo
+    ic(children_types)
 
 
 

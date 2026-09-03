@@ -3,6 +3,8 @@ import re
 from pathlib import Path
 from pydantic import BaseModel
 from entities.minimal_source import MinimalSource
+import tree_sitter_python as tspython
+from tree_sitter import Language, Parser
 from icecream import ic
 
 
@@ -45,18 +47,39 @@ class Indexer:
         """
         1- Crear chunks y guardar en self.chunks
         2- Generar estadisticas del corpus con BM25
+
+            children_types: [
+            'import_statement', 'import_from_statement', 'class_definition',
+            'function_definition', 'if_statement']
         """
         py_docs = {id: doc_path for id, doc_path in self.files_lst.items() if
                    self.get_extension(doc_path) == '.py'}
-        # ic(py_docs)
-        index = 0
+
+        # Setting up tree-sitter with python grammar
+        py_language = Language(tspython.language())
+        parser = Parser(py_language)
+
         try:
             for _, py_path in py_docs.items():
-                with open(py_path, mode='r') as fd:
+                with open(py_path, mode='r', encoding='utf8') as fd:
                     data = fd.read()
-                file_size = len(data)
+                data_bytes = data.encode('utf8')
+                # Getting the file tree
+                tree = parser.parse(data_bytes)
+                # Getting the root node
+                root_node = tree.root_node
+                # Getting the childrens from the root node
+                childrens = root_node.children
+                for children in childrens:
+                    start = children.start_byte
+                    end = children.end_byte
+                    print(data[start:end])
+                    print("===" * 30)
 
-        except (FileNotFoundError) as e:
+
+
+
+        except (FileNotFoundError, PermissionError) as e:
             print(e)
 
         print(self.chunks)
@@ -73,6 +96,9 @@ class Indexer:
         generic_docs = {id: doc_path for id, doc_path in self.files_lst.items() if self.get_extension(doc_path) != '.py'}
         ic("From chunk_others")
         # ic(generic_docs)
+
+def test_function():
+    pass
 
 if __name__ == '__main__':
     indexer = Indexer(1800)
