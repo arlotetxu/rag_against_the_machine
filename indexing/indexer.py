@@ -28,7 +28,7 @@ class Indexer:
         print(f"Documents read: {len(self.files_lst)}")
         # ic(self.files_lst)
         # ic(self.files_lst.get("id999", None))
-        
+
     def get_extension(self, doc_path: str) -> str:
         # ic(Path(doc_path).suffix)
         return (Path(doc_path).suffix)
@@ -39,14 +39,14 @@ class Indexer:
         # Fixing snake_case
         text = re.sub(r'([_\-])', ' ', text)
         return text
-    
+
 
     def chunk_py(self):
         """
         1- Crear chunks y guardar en self.chunks
         2- Generar estadisticas del corpus con BM25
         """
-        py_docs = {id: doc_path for id, doc_path in self.files_lst.items() if 
+        py_docs = {id: doc_path for id, doc_path in self.files_lst.items() if
                    self.get_extension(doc_path) == '.py'}
         # ic(py_docs)
         index = 0
@@ -60,7 +60,7 @@ class Indexer:
             print(e)
 
         print(self.chunks)
-        
+
     # def chunk_md(self):
     #     md_docs = {id: doc_path for id, doc_path in self.files_lst.items() if self.get_extension(doc_path) == '.md'}
     #     ic(md_docs)
@@ -71,4 +71,11 @@ class Indexer:
 
     def chunk_others(self):
         generic_docs = {id: doc_path for id, doc_path in self.files_lst.items() if self.get_extension(doc_path) != '.py'}
+        ic("From chunk_others")
         # ic(generic_docs)
+
+if __name__ == '__main__':
+    indexer = Indexer(1800)
+    indexer.get_input_files()
+    indexer.chunk_others()
+

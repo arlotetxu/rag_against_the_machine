@@ -9,4 +9,6 @@ dependencies = [
     "icecream>=2.2.0",
     "pydantic>=2.13.5",
     "tqdm>=4.70.0",
+    "tree-sitter>=0.26.0",
+    "tree-sitter-python>=0.25.0",
 ]
