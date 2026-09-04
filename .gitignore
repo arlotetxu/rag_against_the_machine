@@ -4,7 +4,7 @@ __pycache__/
 *$py.class
 
 # vLLM
-data/raw/vllm-0.10.1/*
+data/raw/*
 
 # C extensions
 *.so
