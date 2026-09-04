@@ -23,7 +23,7 @@ def index(max_chunk_size: int = 2000) -> None:
         indexer.get_input_files()
         indexer.chunk_py()
         indexer.chunk_others()
-        # indexer.chunk_checker("py_1")
+        indexer.chunk_checker("py_9")
     except Exception as e:
         print(
             f"{Colors.RED.value}[ERROR] - "
@@ -33,9 +33,6 @@ def index(max_chunk_size: int = 2000) -> None:
             f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
             f"{Colors.RESET.value}\n"
         )
-
-
-
 
 
 if __name__ == '__main__':

@@ -1,0 +1,13 @@
+# See https://pre-commit.com for more information
+# See https://pre-commit.com/hooks.html for more hooks
+repos:
+-   repo: local
+    hooks:
+    -   id: lint_&_build
+        name: Lint-strict and Build
+        description: pre-commit to pass before the commit the linter in strict mode and project built
+        entry: bash .github/hooks/pre-commit-lint-built.sh
+        language: system
+        pass_filenames: false
+        always_run: true
+        stages: [pre-commit]
