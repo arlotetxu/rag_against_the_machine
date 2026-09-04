@@ -23,11 +23,11 @@ def index(max_chunk_size: int = 2000) -> None:
         indexer.get_input_files()
         indexer.chunk_py()
         indexer.chunk_others()
-        indexer.chunk_checker("py_9")
+        indexer.chunk_checker("id_2")
     except Exception as e:
         print(
             f"{Colors.RED.value}[ERROR] - "
-            f"Error during game generation process...\n"
+            f"Error during the process...\n"
             f"Details: {e} (occurred in "
             f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
             f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
@@ -36,4 +36,4 @@ def index(max_chunk_size: int = 2000) -> None:
 
 
 if __name__ == '__main__':
-    fire.Fire()
+    fire.Fire()  # type: ignore[no-untyped-call]

@@ -174,15 +174,74 @@ class Indexer:
     #     ic(md_docs)
 
     # def chunk_json(self):
-    #     json_docs = {id: doc_path for id, doc_path in self.files_lst.items()dfdfdf
+    #     json_docs = {id: doc_path for id, doc_path in self.files_lst.items()
     #           if self.get_extension(doc_path) == '.json'}
     #     # ic(json_docs)
 
     def chunk_others(self) -> None:
-        # generic_docs = {id: doc_path for id, doc_path
-        #       in self.files_lst.items()
-        #           if self.get_extension(doc_path) != '.py'}
+        bin_extensions = {
+            '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
+            '.pdf', '.zip', '.tar', '.gz', '.whl', '.so', '.dylib', '.dll',
+        }
+        generic_docs = {id: doc_path for id, doc_path
+                        in self.files_lst.items()
+                        if self.get_extension(doc_path) != '.py'
+                        and self.get_extension(doc_path) not in bin_extensions}
         self.chunk_id = 0
+
+        for _, path in tqdm(generic_docs.items(), desc="Chunking other files"):
+            # ic(path)
+            if path.endswith(".DS_Store"):
+                continue
+            try:
+                with open(path, mode='rb') as fd:
+                    data_bytes = fd.read()
+                try:
+                    data = data_bytes.decode('utf8')
+                except UnicodeDecodeError:
+                    print(
+                        f"{Colors.YELLOW.value}[WARNING] - "
+                        f"Skipping {path}: not valid UTF-8 text"
+                        f"{Colors.RESET.value}")
+                    continue
+
+                file_len = len(data)
+                start = 0
+                end = file_len if file_len <= self.max_chunk else \
+                    start + self.max_chunk
+                diff = end - start
+
+                while diff > self.max_chunk:
+                    self.chunks[f"{self.prefix}{self.chunk_id}"] = \
+                        IndexedChunk(text=data[start:end],
+                                     metadata=MinimalSource(
+                                         file_path=path,
+                                         first_character_index=start,
+                                         last_character_index=end))
+                    start = end
+                    end = start + self.max_chunk
+                    diff = end - start
+                    self.chunk_id += 1
+
+                self.chunks[f"{self.prefix}{self.chunk_id}"] = IndexedChunk(
+                    text=data[start:end],
+                    metadata=MinimalSource(
+                        file_path=path,
+                        first_character_index=start,
+                        last_character_index=end)
+                        )
+                self.chunk_id += 1
+
+            except FileNotFoundError as e:
+                raise FileNotFoundError(
+                    f"{Colors.YELLOW.value}[WARNING] -  "
+                    f"The file {path}{ErrorCodes.FILE_NOT_FOUND.value}"
+                    f"{Colors.RESET.value}") from e
+            except PermissionError as e:
+                raise PermissionError(
+                    f"{Colors.YELLOW.value}[WARNING] -  "
+                    f"The file {path}{ErrorCodes.PERMISSION.value}"
+                    f"{Colors.RESET.value}") from e
         print("From chunk_others")
         # ic(generic_docs)
 
