@@ -20,10 +20,7 @@ def index(max_chunk_size: int = 2000) -> None:
               f"{Colors.RESET.value}")
     try:
         indexer = Indexer(max_chunk_size)
-        indexer.get_input_files()
-        indexer.chunk_py()
-        indexer.chunk_others()
-        indexer.chunk_checker("id_2")
+        indexer.run()
     except Exception as e:
         print(
             f"{Colors.RED.value}[ERROR] - "

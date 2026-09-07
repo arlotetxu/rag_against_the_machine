@@ -1,5 +1,4 @@
 import os
-import re
 from pathlib import Path
 from pydantic import BaseModel
 from tqdm import tqdm
@@ -8,12 +7,20 @@ import tree_sitter_python as tspython
 from tree_sitter import Language, Parser, Node
 from aux.colors import Colors
 from aux.error_desc import ErrorCodes
+from aux.constants import FilePaths
+from indexing.tokenizer import Tokenizer
+from rank_bm25 import BM25Okapi
+import pickle
 # from icecream import ic
 
 
 class IndexedChunk(BaseModel):
     text: str
     metadata: MinimalSource
+
+
+class RagIndex(BaseModel):
+    chunks: list[IndexedChunk]
 
 
 class Indexer:
@@ -27,7 +34,7 @@ class Indexer:
         self.prefix = "id_"
 
     def get_input_files(self) -> None:
-        path = 'data/raw'
+        path = FilePaths.corpus_path.value
         index = 0
         for root, dirs, files in os.walk(path):
             for file in files:
@@ -48,13 +55,6 @@ class Indexer:
                 print(f"Start char: {chunk.metadata.first_character_index}")
                 print(f"Last char: {chunk.metadata.last_character_index}")
                 print("===" * 30)
-
-    def norm_code(self, text: str) -> str:
-        # Splitting camelCase/PascalCase
-        text = re.sub(r'(?<=[a-z])(?=[A-Z])', ' ', text)
-        # Splitting snake_case
-        text = re.sub(r'([_\-])', ' ', text)
-        return text
 
     def add_imports_py_chunks(
             self, py_path: str, data_bytes: bytes, childrens: list[Node]
@@ -93,14 +93,7 @@ class Indexer:
         self.chunk_id += 1
 
     def chunk_py(self) -> None:
-        """
-        1- Crear chunks y guardar en self.chunks
-        2- Generar estadisticas del corpus con BM25
 
-            children_types: [
-            'import_statement', 'import_from_statement', 'class_definition',
-            'function_definition', 'if_statement']
-        """
         py_docs = {id: doc_path for id, doc_path in self.files_lst.items() if
                    self.get_extension(doc_path) == '.py'}
 
@@ -168,16 +161,6 @@ class Indexer:
                 f"The file {py_path}{ErrorCodes.PERMISSION.value}"
                 f"{Colors.RESET.value}") from e
 
-    # def chunk_md(self):
-    #     md_docs = {id: doc_path for id, doc_path in self.files_lst.items()
-    #           if self.get_extension(doc_path) == '.md'}
-    #     ic(md_docs)
-
-    # def chunk_json(self):
-    #     json_docs = {id: doc_path for id, doc_path in self.files_lst.items()
-    #           if self.get_extension(doc_path) == '.json'}
-    #     # ic(json_docs)
-
     def chunk_others(self) -> None:
         bin_extensions = {
             '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
@@ -211,7 +194,14 @@ class Indexer:
                     start + self.max_chunk
                 diff = end - start
 
-                while diff > self.max_chunk:
+                while diff >= self.max_chunk:
+                    # Cutting the chunk in the previous /n
+                    end_prov = end
+                    while data[end_prov] != '\n':
+                        end_prov -= 1
+                        if end_prov <= start:
+                            break
+                        end = end_prov
                     self.chunks[f"{self.prefix}{self.chunk_id}"] = \
                         IndexedChunk(text=data[start:end],
                                      metadata=MinimalSource(
@@ -219,7 +209,8 @@ class Indexer:
                                          first_character_index=start,
                                          last_character_index=end))
                     start = end
-                    end = start + self.max_chunk
+                    to = len(data[start:])
+                    end = start + self.max_chunk if to > self.max_chunk else to
                     diff = end - start
                     self.chunk_id += 1
 
@@ -242,8 +233,44 @@ class Indexer:
                     f"{Colors.YELLOW.value}[WARNING] -  "
                     f"The file {path}{ErrorCodes.PERMISSION.value}"
                     f"{Colors.RESET.value}") from e
-        print("From chunk_others")
-        # ic(generic_docs)
+
+    def tokenize_chunks(self) -> list[list[str]]:
+        corpus_tokens: list[list[str]] = []
+        # chunk_ids: list[str] = []
+        for id, meta in tqdm(self.chunks.items(), desc="Tokenizing..."):
+            if Path(meta.metadata.file_path).suffix == '.py':
+                tokens = Tokenizer().tokenize_code(meta.text)
+            else:
+                tokens = Tokenizer().tokenize_other(meta.text)
+            corpus_tokens.append(tokens)
+            # chunk_ids.append(id)
+        return corpus_tokens
+
+    def bm25_index(self) -> BM25Okapi:
+        corpus_tokens = self.tokenize_chunks()
+        bm25_index = BM25Okapi(corpus_tokens)  # type: ignore[no-untyped-call]
+        return bm25_index
+
+    def save_index(self, bm25_index: BM25Okapi) -> None:
+        file_2_save = "bm25_index.pkl"
+        path_2_save = Path(FilePaths.save_index_path.value)
+        path_2_save.mkdir(parents=True, exist_ok=True)
+
+        with open(path_2_save / file_2_save, mode='wb') as fd:
+            pickle.dump(bm25_index, fd)
+
+        file_2_save = "/chunks.json"
+        path = FilePaths.save_chunks.value
+        chunk_list = list(self.chunks.values())
+        with open(path + file_2_save, mode='w', encoding='utf') as fd:
+            fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
+
+    def run(self) -> None:
+        self.get_input_files()
+        self.chunk_py()
+        self.chunk_others()
+        bm25_index = self.bm25_index()
+        self.save_index(bm25_index)
 
 
 if __name__ == '__main__':
