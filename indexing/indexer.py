@@ -2,7 +2,7 @@ import os
 from pathlib import Path
 from pydantic import BaseModel
 from tqdm import tqdm
-from entities.minimal_source import MinimalSource
+from entities.data_model import MinimalSource
 import tree_sitter_python as tspython
 from tree_sitter import Language, Parser, Node
 from aux.colors import Colors
@@ -11,7 +11,7 @@ from aux.constants import PathsAndNames
 from indexing.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import pickle
-from icecream import ic
+# from icecream import ic
 
 
 class IndexedChunk(BaseModel):
@@ -250,7 +250,6 @@ class Indexer:
     def bm25_index(self) -> BM25Okapi:
         corpus_tokens = self.tokenize_chunks()
         bm25_index = BM25Okapi(corpus_tokens)  # type: ignore[no-untyped-call]
-        ic(bm25_index.corpus_size)
         return bm25_index
 
     def save_index(self, bm25_index: BM25Okapi) -> None:

@@ -11,8 +11,6 @@ ic.configureOutput(includeContext=True)
 
 
 def index(max_chunk_size: int = 2000) -> None:
-    # print("Desde funcion index con python fire")
-    # print(f"Valor max_chunk_size: {max_chunk_size}")
     if max_chunk_size > 2000:
         max_chunk_size = 2000
         print(f"{Colors.YELLOW.value}[WARNING] - "
@@ -30,6 +28,28 @@ def index(max_chunk_size: int = 2000) -> None:
             f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
             f"{Colors.RESET.value}\n"
         )
+
+
+def search(query: str, k: int) -> None:
+    print(query)
+    print(k)
+
+
+def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
+    pass
+
+
+def answer() -> None:
+    pass
+
+
+def answer_dataset(student_search_results_path: str,
+                   save_directory: str) -> None:
+    pass
+
+
+def evaluate() -> None:
+    pass
 
 
 if __name__ == '__main__':
