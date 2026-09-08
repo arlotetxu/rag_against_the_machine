@@ -7,5 +7,6 @@ class ErrorCodes(Enum):
     FILE_NOT_FOUND = " couldn't be found. Please check it. " \
         "Exitting..."
 
-    PERMISSION = " couldn't be opened. Please, check the file permissions. " \
+    PERMISSION = " couldn't be opened/write. "\
+        "Please, check the file permissions. " \
         "Exitting..."

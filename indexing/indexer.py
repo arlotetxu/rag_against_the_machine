@@ -7,11 +7,11 @@ import tree_sitter_python as tspython
 from tree_sitter import Language, Parser, Node
 from aux.colors import Colors
 from aux.error_desc import ErrorCodes
-from aux.constants import FilePaths
+from aux.constants import PathsAndNames
 from indexing.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import pickle
-# from icecream import ic
+from icecream import ic
 
 
 class IndexedChunk(BaseModel):
@@ -34,7 +34,7 @@ class Indexer:
         self.prefix = "id_"
 
     def get_input_files(self) -> None:
-        path = FilePaths.corpus_path.value
+        path = PathsAndNames.corpus_path.value
         index = 0
         for root, dirs, files in os.walk(path):
             for file in files:
@@ -140,7 +140,7 @@ class Indexer:
                                     )
                         self.chunk_id += 1
                         diff -= (to - start)
-                        start = to
+                        start = to + 1
                     self.chunks[f"{self.prefix_py}{self.chunk_id}"] = \
                         IndexedChunk(
                             text=data_bytes[start:end].decode('utf8'),
@@ -197,7 +197,7 @@ class Indexer:
                 while diff >= self.max_chunk:
                     # Cutting the chunk in the previous /n
                     end_prov = end
-                    while data[end_prov] != '\n':
+                    while data[end_prov:end_prov + 1] != '\n':
                         end_prov -= 1
                         if end_prov <= start:
                             break
@@ -208,9 +208,10 @@ class Indexer:
                                          file_path=path,
                                          first_character_index=start,
                                          last_character_index=end))
-                    start = end
+                    start = end + 1
                     to = len(data[start:])
-                    end = start + self.max_chunk if to > self.max_chunk else to
+                    end = start + self.max_chunk if to > self.max_chunk else \
+                        start + to
                     diff = end - start
                     self.chunk_id += 1
 
@@ -249,28 +250,47 @@ class Indexer:
     def bm25_index(self) -> BM25Okapi:
         corpus_tokens = self.tokenize_chunks()
         bm25_index = BM25Okapi(corpus_tokens)  # type: ignore[no-untyped-call]
+        ic(bm25_index.corpus_size)
         return bm25_index
 
     def save_index(self, bm25_index: BM25Okapi) -> None:
-        file_2_save = "bm25_index.pkl"
-        path_2_save = Path(FilePaths.save_index_path.value)
-        path_2_save.mkdir(parents=True, exist_ok=True)
+        file_2_save = PathsAndNames.index_name.value
+        path_2_save = Path(PathsAndNames.save_index_path.value)
 
-        with open(path_2_save / file_2_save, mode='wb') as fd:
-            pickle.dump(bm25_index, fd)
+        try:
+            path_2_save.mkdir(parents=True, exist_ok=True)
 
-        file_2_save = "/chunks.json"
-        path = FilePaths.save_chunks.value
-        chunk_list = list(self.chunks.values())
-        with open(path + file_2_save, mode='w', encoding='utf') as fd:
-            fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
+            with open(path_2_save / file_2_save, mode='wb') as fd:
+                pickle.dump(bm25_index, fd)
+        except PermissionError as e:
+            raise PermissionError(
+                f"{Colors.YELLOW.value}[WARNING] -  "
+                f"The file {path_2_save / file_2_save}"
+                f"{ErrorCodes.PERMISSION.value}"
+                f"{Colors.RESET.value}") from e
+
+        file_2_save = PathsAndNames.chunks_json.value
+        path = PathsAndNames.save_chunks.value
+        try:
+            chunk_list = list(self.chunks.values())
+            with open(path + file_2_save, mode='w', encoding='utf') as fd:
+                fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
+        except PermissionError as e:
+            raise PermissionError(
+                f"{Colors.YELLOW.value}[WARNING] -  "
+                f"The file {path}"
+                f"{ErrorCodes.PERMISSION.value}"
+                f"{Colors.RESET.value}") from e
 
     def run(self) -> None:
-        self.get_input_files()
-        self.chunk_py()
-        self.chunk_others()
-        bm25_index = self.bm25_index()
-        self.save_index(bm25_index)
+        try:
+            self.get_input_files()
+            self.chunk_py()
+            self.chunk_others()
+            bm25_index = self.bm25_index()
+            self.save_index(bm25_index)
+        except (FileNotFoundError, PermissionError) as e:
+            raise Exception(e)
 
 
 if __name__ == '__main__':
