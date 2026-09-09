@@ -4,6 +4,7 @@ import fire
 from aux.colors import Colors
 from aux.error_desc import ErrorCodes
 from indexing.indexer import Indexer
+from retrieval.retrieval import Retrieval
 import traceback
 from icecream import ic
 
@@ -11,6 +12,10 @@ ic.configureOutput(includeContext=True)
 
 
 def index(max_chunk_size: int = 2000) -> None:
+    """
+    Create the index with file chunks
+    Uses MinimalSource
+    """
     if max_chunk_size > 2000:
         max_chunk_size = 2000
         print(f"{Colors.YELLOW.value}[WARNING] - "
@@ -31,24 +36,51 @@ def index(max_chunk_size: int = 2000) -> None:
 
 
 def search(query: str, k: int) -> None:
-    print(query)
-    print(k)
+    """
+    One single query
+    Uses StudentSearchResults to generate JSON
+    """
+    ic(query)
+    ic(k)
+    Retrieval().get_bm25_index()
+    Retrieval().get_chunks()
 
 
 def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
+    """
+    Batch queries
+    Uses StudentSearchResults to generate JSON
+    """
+    ic(dataset_path)
+    ic(k)
+    ic(save_directory)
     pass
 
 
 def answer() -> None:
+    """
+    Generate a single answer to a single query using LLM Qwen3-0.6B
+    Uses StudentSearchResultsAndAnswer to generate JSON
+    """
+    ic("From answer")
     pass
 
 
 def answer_dataset(student_search_results_path: str,
                    save_directory: str) -> None:
+    """
+    Generates answers to a batch of queries using LLM Qwen3-0.6B
+    Uses StudentSearchResultsAndAnswer to generate JSON
+    """
+    ic("From answer_dataset")
     pass
 
 
 def evaluate() -> None:
+    """
+    The test function to check the results
+    """
+    ic("From evaluate")
     pass
 
 

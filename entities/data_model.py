@@ -40,3 +40,12 @@ class StudentSearchResults(BaseModel):
 class StudentSearchResultsAndAnswer(BaseModel):
     search_results: list[MinimalAnswer]
     k: int
+
+
+class IndexedChunk(BaseModel):
+    text: str
+    metadata: MinimalSource
+
+
+class RagIndex(BaseModel):
+    chunks: list[IndexedChunk]

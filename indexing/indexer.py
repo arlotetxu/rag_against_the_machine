@@ -1,6 +1,5 @@
 import os
 from pathlib import Path
-from pydantic import BaseModel
 from tqdm import tqdm
 from entities.data_model import MinimalSource
 import tree_sitter_python as tspython
@@ -10,17 +9,9 @@ from aux.error_desc import ErrorCodes
 from aux.constants import PathsAndNames
 from indexing.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
+from entities.data_model import IndexedChunk, RagIndex
 import pickle
 # from icecream import ic
-
-
-class IndexedChunk(BaseModel):
-    text: str
-    metadata: MinimalSource
-
-
-class RagIndex(BaseModel):
-    chunks: list[IndexedChunk]
 
 
 class Indexer:
