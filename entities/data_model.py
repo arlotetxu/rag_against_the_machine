@@ -49,3 +49,7 @@ class IndexedChunk(BaseModel):
 
 class RagIndex(BaseModel):
     chunks: list[IndexedChunk]
+
+
+class SearchResult(BaseModel):
+    result: StudentSearchResults

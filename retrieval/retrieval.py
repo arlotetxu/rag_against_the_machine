@@ -7,11 +7,14 @@ from entities.data_model import (IndexedChunk,
                                  RagIndex,
                                  MinimalSource,
                                  MinimalSearchResults,
-                                 StudentSearchResults)
+                                 StudentSearchResults,
+                                 SearchResult)
 from indexing.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import numpy as np
 import uuid
+from pathlib import Path
+import json
 
 
 from icecream import ic
@@ -72,7 +75,7 @@ class Retrieval:
         query_tokens = set(query_tokens_other)
         for token in query_tokens_code:
             query_tokens.add(token)
-        ic(list(query_tokens))
+        # ic(list(query_tokens))
         return list(query_tokens)
 
     def get_indexes(self, query:str, k: int) -> list[int]:
@@ -84,7 +87,7 @@ class Retrieval:
 
         return scores[:k]
 
-    def get_query_chunks(self, query: str, k:int) -> None:
+    def get_query_chunks(self, query: str, k:int) -> StudentSearchResults:
         chunk_indexes = self.get_indexes(query, k)
         minimal_source_lst = [
             self.chunks.chunks[index].metadata for index in chunk_indexes
@@ -99,6 +102,51 @@ class Retrieval:
             search_results=[minimal_search_result],
             k=k
         )
-        ic(result)
+        try:
+            file_path = Path(f"{PathsAndNames.search_path.value}")
+            file_name = f"{PathsAndNames.search_file_name.value}"
+            file_path.mkdir(parents=True, exist_ok=True)
+            final_path = str(file_path) + '/' + file_name
+
+            with open(final_path, mode='w') as fd:
+                fd.write(SearchResult(result=result).model_dump_json(indent=2))
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{final_path}'{ErrorCodes.PERMISSION.value} or "
+                f"{ErrorCodes.FILE_NOT_FOUND.value}"
+                )
+
+        for entry in result.search_results:
+            for source in entry.retrieved_sources:
+                print(f"{source.file_path} ["
+                      f"{source.first_character_index}:"
+                      f"{source.last_character_index}]")
+
+        return result
+
+    def evaluate_search(self, query: str, k: int) -> None:
+        result = self.get_query_chunks(query, k)
+        try:
+            path_answ_code = f"{PathsAndNames.answared_code.value}"
+            path_answ_other = f"{PathsAndNames.answared_other.value}"
+            with open(path_answ_code, mode='r') as fd:
+                answ_code = json.load(fd)
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{path_answ_code}'{ErrorCodes.PERMISSION.value} or "
+                f"{ErrorCodes.FILE_NOT_FOUND.value}"
+                )
+        # ic(answ_code.keys())
+        # ic(answ_code.values())
+
+        count = 0
+        for v in answ_code.values():
+            for k in v:
+                print(k.get("question"))
+                print()
+                count += 1
+        ic(count)
 
 

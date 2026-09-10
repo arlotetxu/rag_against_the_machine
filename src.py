@@ -21,18 +21,8 @@ def index(max_chunk_size: int = 2000) -> None:
         print(f"{Colors.YELLOW.value}[WARNING] - "
               f"{ErrorCodes.MAX_SIZE_CHUNK.value}"
               f"{Colors.RESET.value}")
-    try:
-        indexer = Indexer(max_chunk_size)
-        indexer.run()
-    except Exception as e:
-        print(
-            f"{Colors.RED.value}[ERROR] - "
-            f"Error during the process...\n"
-            f"Details: {e} (occurred in "
-            f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
-            f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
-            f"{Colors.RESET.value}\n"
-        )
+    indexer = Indexer(max_chunk_size)
+    indexer.run()
 
 
 def search(query: str, k: int) -> None:
@@ -76,13 +66,24 @@ def answer_dataset(student_search_results_path: str,
     pass
 
 
-def evaluate() -> None:
+def evaluate(query: str, k: int) -> None:
     """
     The test function to check the results
     """
     ic("From evaluate")
-    pass
+    retrieval = Retrieval()
+    retrieval.evaluate_search(query, k)
 
 
 if __name__ == '__main__':
-    fire.Fire()  # type: ignore[no-untyped-call]
+    try:
+        fire.Fire()  # type: ignore[no-untyped-call]
+    except Exception as e:
+        print(
+            f"{Colors.RED.value}[ERROR] - "
+            f"Error during the process...\n"
+            f"Details: {e} (occurred in "
+            f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
+            f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
+            f"{Colors.RESET.value}\n"
+        )

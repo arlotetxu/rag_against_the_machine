@@ -4,9 +4,7 @@ class ErrorCodes(Enum):
     MAX_SIZE_CHUNK = "max_chunk_size needs to be less than 2001. " \
         "Applying default max value: 2000."
 
-    FILE_NOT_FOUND = " couldn't be found. Please check it. " \
-        "Exitting..."
+    FILE_NOT_FOUND = " couldn't be found. Please check it. "
 
-    PERMISSION = " couldn't be opened/write. "\
-        "Please, check the file permissions. " \
-        "Exitting..."
+    PERMISSION = " couldn't be opened/wrote. "\
+        "Please, check the file/folder permissions. "
