@@ -40,10 +40,10 @@ def search(query: str, k: int) -> None:
     One single query
     Uses StudentSearchResults to generate JSON
     """
-    ic(query)
-    ic(k)
-    Retrieval().get_bm25_index()
-    Retrieval().get_chunks()
+    retrieval = Retrieval()
+    # Retrieval().get_bm25_index()
+    # Retrieval().get_chunks()
+    retrieval.get_query_chunks(query=query, k=k)
 
 
 def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
