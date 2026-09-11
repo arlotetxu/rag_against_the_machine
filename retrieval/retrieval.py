@@ -54,7 +54,8 @@ class Retrieval:
 
         try:
             with open(path, mode='r') as fd:
-                chunks = RagIndex.model_validate_json(fd.read())
+                ragindex_chunks = RagIndex.model_validate_json(fd.read())
+                ic(len(ragindex_chunks.chunks))
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"{Colors.RED.value}[ERROR] - "
@@ -66,7 +67,7 @@ class Retrieval:
                 f"The chunks file '{path}'{ErrorCodes.PERMISSION.value}"
                 )
         # ic(chunks.chunks[0].metadata)
-        return chunks
+        return ragindex_chunks
 
     def tokenize_query(self, query: str) -> list[str]:
         query_tokens = set()
@@ -75,7 +76,7 @@ class Retrieval:
         query_tokens = set(query_tokens_other)
         for token in query_tokens_code:
             query_tokens.add(token)
-        # ic(list(query_tokens))
+        ic(list(query_tokens))
         return list(query_tokens)
 
     def get_indexes(self, query:str, k: int) -> list[int]:
@@ -129,15 +130,25 @@ class Retrieval:
         result = self.get_query_chunks(query, k)
         try:
             path_answ_code = f"{PathsAndNames.answared_code.value}"
-            path_answ_other = f"{PathsAndNames.answared_other.value}"
-            with open(path_answ_code, mode='r') as fd:
-                answ_code = json.load(fd)
+            with open(path_answ_code, mode='r') as fdc:
+                answ_code = json.load(fdc)
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The file '{path_answ_code}'{ErrorCodes.PERMISSION.value} or "
                 f"{ErrorCodes.FILE_NOT_FOUND.value}"
                 )
+        try:
+            path_answ_other = f"{PathsAndNames.answared_other.value}"
+            with open(path_answ_other, mode='r') as fdo:
+                answ_other = json.load(fdo)
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{path_answ_other}'{ErrorCodes.PERMISSION.value} or "
+                f"{ErrorCodes.FILE_NOT_FOUND.value}"
+                )
+
         # ic(answ_code.keys())
         # ic(answ_code.values())
 

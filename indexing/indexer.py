@@ -121,26 +121,28 @@ class Indexer:
                             if to <= start:
                                 to = start + self.max_chunk
                                 break
+                        if (to - start) >= 10:
+                            self.chunks[f"{self.prefix_py}{self.chunk_id}"] = \
+                                IndexedChunk(
+                                    text=data_bytes[start: to].decode('utf8'),
+                                    metadata=MinimalSource(
+                                        file_path=py_path,
+                                        first_character_index=start,
+                                        last_character_index=to)
+                                        )
+                            self.chunk_id += 1
+                        diff -= (to - start)
+                        start = to + 1
+                    if end - start >= 10:
                         self.chunks[f"{self.prefix_py}{self.chunk_id}"] = \
                             IndexedChunk(
-                                text=data_bytes[start: to].decode('utf8'),
+                                text=data_bytes[start:end].decode('utf8'),
                                 metadata=MinimalSource(
                                     file_path=py_path,
                                     first_character_index=start,
-                                    last_character_index=to)
+                                    last_character_index=end)
                                     )
                         self.chunk_id += 1
-                        diff -= (to - start)
-                        start = to + 1
-                    self.chunks[f"{self.prefix_py}{self.chunk_id}"] = \
-                        IndexedChunk(
-                            text=data_bytes[start:end].decode('utf8'),
-                            metadata=MinimalSource(
-                                file_path=py_path,
-                                first_character_index=start,
-                                last_character_index=end)
-                                )
-                    self.chunk_id += 1
         except FileNotFoundError as e:
             raise FileNotFoundError(
                 f"{Colors.YELLOW.value}[WARNING] -  "
@@ -191,29 +193,31 @@ class Indexer:
                     while data[end_prov:end_prov + 1] != '\n':
                         end_prov -= 1
                         if end_prov <= start:
+                            end = start + self.max_chunk
                             break
                         end = end_prov
+                    if end - start > 10:
+                        self.chunks[f"{self.prefix}{self.chunk_id}"] = \
+                            IndexedChunk(text=data[start:end],
+                                         metadata=MinimalSource(
+                                            file_path=path,
+                                            first_character_index=start,
+                                            last_character_index=end))
+                        self.chunk_id += 1
+                    start = end + 1
+                    to = len(data[start:])
+                    end = start + self.max_chunk if to > self.max_chunk else \
+                        start + to
+                    diff = end - start
+
+                if end - start > 10:
                     self.chunks[f"{self.prefix}{self.chunk_id}"] = \
                         IndexedChunk(text=data[start:end],
                                      metadata=MinimalSource(
                                          file_path=path,
                                          first_character_index=start,
                                          last_character_index=end))
-                    start = end + 1
-                    to = len(data[start:])
-                    end = start + self.max_chunk if to > self.max_chunk else \
-                        start + to
-                    diff = end - start
                     self.chunk_id += 1
-
-                self.chunks[f"{self.prefix}{self.chunk_id}"] = IndexedChunk(
-                    text=data[start:end],
-                    metadata=MinimalSource(
-                        file_path=path,
-                        first_character_index=start,
-                        last_character_index=end)
-                        )
-                self.chunk_id += 1
 
             except FileNotFoundError as e:
                 raise FileNotFoundError(
@@ -232,8 +236,12 @@ class Indexer:
         for id, meta in tqdm(self.chunks.items(), desc="Tokenizing..."):
             if Path(meta.metadata.file_path).suffix == '.py':
                 tokens = Tokenizer().tokenize_code(meta.text)
+                tokens.extend(
+                    Tokenizer().tokenize_code(meta.metadata.file_path))
             else:
                 tokens = Tokenizer().tokenize_other(meta.text)
+                tokens.extend(
+                    Tokenizer().tokenize_other(meta.metadata.file_path))
             corpus_tokens.append(tokens)
             # chunk_ids.append(id)
         return corpus_tokens
