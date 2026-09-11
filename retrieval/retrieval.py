@@ -8,7 +8,8 @@ from entities.data_model import (IndexedChunk,
                                  MinimalSource,
                                  MinimalSearchResults,
                                  StudentSearchResults,
-                                 SearchResult)
+                                 SearchResult,
+                                 RagDataset)
 from indexing.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import numpy as np
@@ -55,7 +56,6 @@ class Retrieval:
         try:
             with open(path, mode='r') as fd:
                 ragindex_chunks = RagIndex.model_validate_json(fd.read())
-                ic(len(ragindex_chunks.chunks))
         except FileNotFoundError:
             raise FileNotFoundError(
                 f"{Colors.RED.value}[ERROR] - "
@@ -76,7 +76,6 @@ class Retrieval:
         query_tokens = set(query_tokens_other)
         for token in query_tokens_code:
             query_tokens.add(token)
-        ic(list(query_tokens))
         return list(query_tokens)
 
     def get_indexes(self, query:str, k: int) -> list[int]:
@@ -88,7 +87,8 @@ class Retrieval:
 
         return scores[:k]
 
-    def get_query_chunks(self, query: str, k:int) -> StudentSearchResults:
+    def get_query_chunks(
+            self, query: str, k:int, print_ = False) -> StudentSearchResults:
         chunk_indexes = self.get_indexes(query, k)
         minimal_source_lst = [
             self.chunks.chunks[index].metadata for index in chunk_indexes
@@ -118,20 +118,22 @@ class Retrieval:
                 f"{ErrorCodes.FILE_NOT_FOUND.value}"
                 )
 
-        for entry in result.search_results:
-            for source in entry.retrieved_sources:
-                print(f"{source.file_path} ["
-                      f"{source.first_character_index}:"
-                      f"{source.last_character_index}]")
+        if print_:
+            for entry in result.search_results:
+                for source in entry.retrieved_sources:
+                    print(f"{source.file_path} ["
+                        f"{source.first_character_index}:"
+                        f"{source.last_character_index}]")
 
         return result
 
-    def evaluate_search(self, query: str, k: int) -> None:
-        result = self.get_query_chunks(query, k)
+    def evaluate_search(self, k: int) -> None:
+        # result = self.get_query_chunks(query, k)
         try:
             path_answ_code = f"{PathsAndNames.answared_code.value}"
             with open(path_answ_code, mode='r') as fdc:
-                answ_code = json.load(fdc)
+                # answ_code = json.load(fdc)
+                dataset_code = RagDataset.model_validate_json(fdc.read())
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
@@ -141,23 +143,15 @@ class Retrieval:
         try:
             path_answ_other = f"{PathsAndNames.answared_other.value}"
             with open(path_answ_other, mode='r') as fdo:
-                answ_other = json.load(fdo)
+                # answ_other = json.load(fdo)
+                dataset_other = RagDataset.model_validate_json(fdo.read())
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The file '{path_answ_other}'{ErrorCodes.PERMISSION.value} or "
                 f"{ErrorCodes.FILE_NOT_FOUND.value}"
                 )
-
-        # ic(answ_code.keys())
-        # ic(answ_code.values())
-
-        count = 0
-        for v in answ_code.values():
-            for k in v:
-                print(k.get("question"))
-                print()
-                count += 1
-        ic(count)
+        for question in dataset_code.rag_questions:
+            print(question.sources)
 
 

@@ -66,13 +66,13 @@ def answer_dataset(student_search_results_path: str,
     pass
 
 
-def evaluate(query: str, k: int) -> None:
+def evaluate(k: int) -> None:
     """
     The test function to check the results
     """
     ic("From evaluate")
     retrieval = Retrieval()
-    retrieval.evaluate_search(query, k)
+    retrieval.evaluate_search(k)
 
 
 if __name__ == '__main__':
