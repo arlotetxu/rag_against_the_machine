@@ -17,7 +17,7 @@ import pickle
 class Indexer:
 
     def __init__(
-            self, max_chunk_size: int = 2000, min_chunk_tokens: int = 10
+            self, max_chunk_size: int = 2000, min_chunk_tokens: int = 25
             ) -> None:
         self.max_chunk = max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens

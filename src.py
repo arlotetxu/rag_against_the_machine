@@ -33,7 +33,7 @@ def search(query: str, k: int) -> None:
     retrieval = Retrieval()
     # Retrieval().get_bm25_index()
     # Retrieval().get_chunks()
-    retrieval.get_query_chunks(query=query, k=k)
+    retrieval.get_query_chunks(query=query, k=k, print_=True)
 
 
 def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
@@ -66,13 +66,13 @@ def answer_dataset(student_search_results_path: str,
     pass
 
 
-def evaluate(k: int) -> None:
+def evaluate(dataset_path: str, k: int) -> None:
     """
     The test function to check the results
     """
     ic("From evaluate")
     retrieval = Retrieval()
-    retrieval.evaluate_search(k)
+    retrieval.get_recall(dataset_path, k)
 
 
 if __name__ == '__main__':

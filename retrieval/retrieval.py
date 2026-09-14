@@ -16,6 +16,7 @@ import numpy as np
 import uuid
 from pathlib import Path
 import json
+from tqdm import tqdm
 
 
 from icecream import ic
@@ -127,31 +128,86 @@ class Retrieval:
 
         return result
 
-    def evaluate_search(self, k: int) -> None:
-        # result = self.get_query_chunks(query, k)
+    def get_iou(
+            self,
+            original: tuple[int, int],
+            retrieved: tuple[int, int]) -> float:
+        orig_start, orig_end = original
+        retr_start, retr_end = retrieved
+
+        num = max(0, min(orig_end, retr_end) - max(orig_start, retr_start) + 1)
+        denom = (orig_end - orig_start + 1) + (retr_end - retr_start + 1) - num
+
+        return num / denom if denom > 0 else 0.0
+
+    def get_recall(self, dataset_path: str, k: int) -> None:
         try:
-            path_answ_code = f"{PathsAndNames.answared_code.value}"
-            with open(path_answ_code, mode='r') as fdc:
+            with open(dataset_path, mode='r') as fdc:
                 # answ_code = json.load(fdc)
-                dataset_code = RagDataset.model_validate_json(fdc.read())
+                dataset = RagDataset.model_validate_json(fdc.read())
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{path_answ_code}'{ErrorCodes.PERMISSION.value} or "
+                f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
                 f"{ErrorCodes.FILE_NOT_FOUND.value}"
                 )
-        try:
-            path_answ_other = f"{PathsAndNames.answared_other.value}"
-            with open(path_answ_other, mode='r') as fdo:
-                # answ_other = json.load(fdo)
-                dataset_other = RagDataset.model_validate_json(fdo.read())
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{path_answ_other}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                )
-        for question in dataset_code.rag_questions:
-            print(question.sources)
+
+        k_values = list(range(1, k+1))
+        score = {k_i: 0.0 for k_i in k_values}
+        num_questions = 0
+
+        for question in tqdm(
+            dataset.rag_questions, desc=f"Calculating Recall@{k}..."):
+            # Getting source info and saving into a dict[str, tuple(int, int)]
+            source: MinimalSource = question.sources
+            if not source:
+                continue
+            num_questions += 1
+
+            # Getting the retrieved info
+            results: StudentSearchResults = \
+                self.get_query_chunks(question.question, k)
+            retrieved: MinimalSource = [
+                source
+                for result in results.search_results
+                for source in result.retrieved_sources]
+
+            # Getting recall
+            for k_i in k_values:
+                top_k = retrieved[:k_i]
+                found = 0
+                for correct in source:
+                    for candidate in top_k:
+                        if candidate.file_path != correct.file_path:
+                            continue
+                        iou = self.get_iou(
+                            (correct.first_character_index,
+                             correct.last_character_index),
+                            (candidate.first_character_index,
+                             candidate.last_character_index))
+                        # ic(iou)
+                        if iou > 0.05:
+                            found += 1
+                            break
+                score[k_i] += found / len(source)
+        if num_questions > 0:
+            final_result = {k_i: score[k_i] / num_questions for k_i in k_values}
+        else:
+            final_result = {k: 0.0 for k in k_values}
+        self.get_print_recall(final_result, num_questions)
+
+    def get_print_recall(
+            self, final_result: dict[int, float],
+            num_questions: int) -> None:
+        print()
+        print("Evaluation Results")
+        print("==" * 15)
+        print(f"Questions evaluated: {num_questions}")
+        for k, result in final_result.items():
+            print(f"{Colors.BLUE.value}"
+                  f"Recall@{k}: {result:.2f} ({result * 100:.2f}%)")
+        print(f"{Colors.RESET.value}")
+
+
 
 
