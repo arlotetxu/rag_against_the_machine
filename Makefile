@@ -41,9 +41,9 @@ MAGENTA     = \033[0;95m
 CYAN        = \033[0;96m
 WHITE       = \033[0;97m
 
-MAIN_FILE = src.py
+MAIN_FILE = src/__main__.py
 # SRC = src/
-IND = indexing/
+IND = indexer/
 ENT = entities/
 LINT_TARGETS = $(MAIN_FILE) $(IND) $(ENT)
 

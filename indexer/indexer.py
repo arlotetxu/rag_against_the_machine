@@ -7,10 +7,11 @@ from tree_sitter import Language, Parser, Node
 from aux.colors import Colors
 from aux.error_desc import ErrorCodes
 from aux.constants import PathsAndNames
-from indexing.tokenizer import Tokenizer
+from indexer.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 from entities.data_model import IndexedChunk, RagIndex
 import pickle
+from pydantic import ValidationError
 # from icecream import ic
 
 
@@ -259,7 +260,7 @@ class Indexer:
         bm25_index = BM25Okapi(corpus_tokens)  # type: ignore[no-untyped-call]
         return bm25_index
 
-    def save_index(self, bm25_index: BM25Okapi) -> None:
+    def save_index_chunks(self, bm25_index: BM25Okapi) -> None:
         file_2_save = PathsAndNames.index_name.value
         path_2_save = Path(PathsAndNames.save_index_path.value)
 
@@ -287,6 +288,12 @@ class Indexer:
                 f"The file {path}"
                 f"{ErrorCodes.PERMISSION.value}"
                 f"{Colors.RESET.value}") from e
+        except ValidationError as e:
+            raise ValueError(e)
+        print(f"{Colors.GREEN.value}"
+              f"Corpus ingestion complete! "
+              f"Indexed {len(self.chunks)} chunks under {path}"
+              f"{Colors.RESET.value}")
 
     def run(self) -> None:
         try:
@@ -294,7 +301,7 @@ class Indexer:
             self.chunk_py()
             self.chunk_others()
             bm25_index = self.bm25_index()
-            self.save_index(bm25_index)
+            self.save_index_chunks(bm25_index)
         except (FileNotFoundError, PermissionError) as e:
             raise Exception(e)
 

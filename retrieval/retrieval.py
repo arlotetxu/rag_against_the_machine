@@ -10,7 +10,7 @@ from entities.data_model import (IndexedChunk,
                                  StudentSearchResults,
                                  SearchResult,
                                  RagDataset)
-from indexing.tokenizer import Tokenizer
+from indexer.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import numpy as np
 import uuid
@@ -67,6 +67,9 @@ class Retrieval:
                 f"{Colors.RED.value}[ERROR] - "
                 f"The chunks file '{path}'{ErrorCodes.PERMISSION.value}"
                 )
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+
         # ic(chunks.chunks[0].metadata)
         return ragindex_chunks
 
@@ -104,20 +107,6 @@ class Retrieval:
             search_results=[minimal_search_result],
             k=k
         )
-        try:
-            file_path = Path(f"{PathsAndNames.search_path.value}")
-            file_name = f"{PathsAndNames.search_file_name.value}"
-            file_path.mkdir(parents=True, exist_ok=True)
-            final_path = str(file_path) + '/' + file_name
-
-            with open(final_path, mode='w') as fd:
-                fd.write(SearchResult(result=result).model_dump_json(indent=2))
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{final_path}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                )
 
         if print_:
             for entry in result.search_results:
@@ -127,6 +116,26 @@ class Retrieval:
                         f"{source.last_character_index}]")
 
         return result
+
+    def get_batch_query_chunks(self, dataset_path: str, k: int, save_directory: str):
+        """
+        Uses StudentSearchResults to generate JSON
+
+        class StudentSearchResults(BaseModel):
+            search_results: list[MinimalSearchResults]
+            k: int
+
+        class MinimalSearchResults(BaseModel):
+            question_id: str
+            question: str
+            retrieved_sources: list[MinimalSource]
+
+        class MinimalSource(BaseModel):
+            file_path: str
+            first_character_index: int
+            last_character_index: int
+        """
+        pass
 
     def get_iou(
             self,
@@ -138,12 +147,11 @@ class Retrieval:
         num = max(0, min(orig_end, retr_end) - max(orig_start, retr_start) + 1)
         denom = (orig_end - orig_start + 1) + (retr_end - retr_start + 1) - num
 
-        return num / denom if denom > 0 else 0.0
+        return (num / denom) if denom > 0 else 0.0
 
     def get_recall(self, dataset_path: str, k: int) -> None:
         try:
             with open(dataset_path, mode='r') as fdc:
-                # answ_code = json.load(fdc)
                 dataset = RagDataset.model_validate_json(fdc.read())
         except OSError as e:
             raise OSError(
@@ -151,6 +159,8 @@ class Retrieval:
                 f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
                 f"{ErrorCodes.FILE_NOT_FOUND.value}"
                 )
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
 
         k_values = list(range(1, k+1))
         score = {k_i: 0.0 for k_i in k_values}

@@ -1,9 +1,8 @@
 # import os
 import sys
-import fire
 from aux.colors import Colors
 from aux.error_desc import ErrorCodes
-from indexing.indexer import Indexer
+from indexer.indexer import Indexer
 from retrieval.retrieval import Retrieval
 import traceback
 from icecream import ic
@@ -30,9 +29,8 @@ def search(query: str, k: int) -> None:
     One single query
     Uses StudentSearchResults to generate JSON
     """
+    ic("From search")
     retrieval = Retrieval()
-    # Retrieval().get_bm25_index()
-    # Retrieval().get_chunks()
     retrieval.get_query_chunks(query=query, k=k, print_=True)
 
 
@@ -44,7 +42,9 @@ def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
     ic(dataset_path)
     ic(k)
     ic(save_directory)
-    pass
+    ic("From search")
+    retrieval = Retrieval()
+    retrieval.get_batch_query_chunks(dataset_path, k, save_directory)
 
 
 def answer() -> None:
@@ -75,15 +75,15 @@ def evaluate(dataset_path: str, k: int) -> None:
     retrieval.get_recall(dataset_path, k)
 
 
-if __name__ == '__main__':
-    try:
-        fire.Fire()  # type: ignore[no-untyped-call]
-    except Exception as e:
-        print(
-            f"{Colors.RED.value}[ERROR] - "
-            f"Error during the process...\n"
-            f"Details: {e} (occurred in "
-            f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
-            f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
-            f"{Colors.RESET.value}\n"
-        )
+# if __name__ == '__main__':
+#     try:
+#         fire.Fire()  # type: ignore[no-untyped-call]
+#     except Exception as e:
+#         print(
+#             f"{Colors.RED.value}[ERROR] - "
+#             f"Error during the process...\n"
+#             f"Details: {e} (occurred in "
+#             f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
+#             f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
+#             f"{Colors.RESET.value}\n"
+#         )
