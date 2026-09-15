@@ -1,10 +1,7 @@
-# import os
-import sys
-from aux.colors import Colors
-from aux.error_desc import ErrorCodes
-from indexer.indexer import Indexer
-from retrieval.retrieval import Retrieval
-import traceback
+from src.aux.colors import Colors
+from src.aux.error_desc import ErrorCodes
+from src.indexer.indexer import Indexer
+from src.retrieval.retrieval import Retrieval
 from icecream import ic
 
 ic.configureOutput(includeContext=True)
@@ -73,17 +70,3 @@ def evaluate(dataset_path: str, k: int) -> None:
     ic("From evaluate")
     retrieval = Retrieval()
     retrieval.get_recall(dataset_path, k)
-
-
-# if __name__ == '__main__':
-#     try:
-#         fire.Fire()  # type: ignore[no-untyped-call]
-#     except Exception as e:
-#         print(
-#             f"{Colors.RED.value}[ERROR] - "
-#             f"Error during the process...\n"
-#             f"Details: {e} (occurred in "
-#             f"{traceback.extract_tb(sys.exc_info()[2])[-1].filename} at line "
-#             f"{traceback.extract_tb(sys.exc_info()[2])[-1].lineno})"
-#             f"{Colors.RESET.value}\n"
-#         )

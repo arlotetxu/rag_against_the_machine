@@ -42,10 +42,11 @@ CYAN        = \033[0;96m
 WHITE       = \033[0;97m
 
 MAIN_FILE = src/__main__.py
-# SRC = src/
-IND = indexer/
-ENT = entities/
-LINT_TARGETS = $(MAIN_FILE) $(IND) $(ENT)
+SRC = src/
+# IND = src/indexer/
+# ENT = src/entities/
+# LINT_TARGETS = $(MAIN_FILE) $(IND) $(ENT)
+LINT_TARGETS = $(SRC)
 
 all: install run
 

@@ -3,7 +3,7 @@ import traceback
 
 import fire
 
-from aux.colors import Colors
+from src.aux.colors import Colors
 from src.commands import (
     answer,
     answer_dataset,
