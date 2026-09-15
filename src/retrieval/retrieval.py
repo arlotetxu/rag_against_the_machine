@@ -16,16 +16,18 @@ import uuid
 from tqdm import tqdm
 from typing import Any
 
-# from icecream import ic
+from icecream import ic
 
 
 class Retrieval:
     def __init__(self) -> None:
+
         self.tokenizer: Tokenizer = Tokenizer()
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
 
     def get_bm25_index(self) -> Any:
+
         index_parents = PathsAndNames.save_index_path.value
         index_name = PathsAndNames.index_name.value
         path = index_parents + '/' + index_name
@@ -47,6 +49,7 @@ class Retrieval:
         return bm25_index
 
     def get_chunks(self) -> RagIndex:
+
         chunks_parents = PathsAndNames.save_chunks.value
         file_name = PathsAndNames.chunks_json.value
         path = chunks_parents + file_name
@@ -71,6 +74,7 @@ class Retrieval:
         return ragindex_chunks
 
     def tokenize_query(self, query: str) -> list[str]:
+
         query_tokens = set()
         query_tokens_code = self.tokenizer.tokenize_code(query)
         query_tokens_other = self.tokenizer.tokenize_other(query)
@@ -80,6 +84,7 @@ class Retrieval:
         return list(query_tokens)
 
     def get_indexes(self, query: str, k: int) -> Any:
+
         query_tokens = self.tokenize_query(query)
         scores = self.bm25_index.get_scores(
             query_tokens)  # type: ignore[no-untyped-call]
@@ -140,6 +145,19 @@ class Retrieval:
             first_character_index: int
             last_character_index: int
         """
+
+        try:
+            with open(dataset_path, mode='r') as fdc:
+                dataset = RagDataset.model_validate_json(fdc.read())
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
+                f"{ErrorCodes.FILE_NOT_FOUND.value}"
+                ) from e
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+        ic(type(dataset))
         pass
 
     def get_iou(
@@ -156,6 +174,7 @@ class Retrieval:
         return (num / denom) if denom > 0 else 0.0
 
     def get_recall(self, dataset_path: str, k: int) -> None:
+
         try:
             with open(dataset_path, mode='r') as fdc:
                 dataset = RagDataset.model_validate_json(fdc.read())

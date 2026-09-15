@@ -63,6 +63,25 @@ run: install
 # 	uv run $(MAIN_FILE)
 	uv run -m src index --max_chunk_size 2000
 
+index: install
+	uv run python3 -m src index --max_chunk_size 2000
+
+search: install
+	@read -p "Query: " QUERY;\
+	read -p "K value: " K_VALUE;\
+	uv run python3 -m src search "$$QUERY" --k "$$K_VALUE"
+
+search_dataset: install
+	@read -p "Dataset path: " DATASET_PATH;\
+	read -p "Saving path: " SAVING_PATH;\
+	read -p "K value: " K_VALUE;\
+	uv run python3 -m src search_dataset "$$DATASET_PATH" --k "$$K_VALUE" "$$SAVING_PATH"
+
+evaluate: install
+	@read -p "Path to dataset: " DATASET_PATH;\
+	read -p "K value: " K_VALUE;\
+	uv run python3 -m src evaluate "$$DATASET_PATH" --k "$$K_VALUE" 
+
 debug: install
 	@echo "$(YELLOW)Entering debugging mode...$(DEF_COLOR)"
 	uv run python3 -m pdb -c continue $(MAIN_FILE) config.json
