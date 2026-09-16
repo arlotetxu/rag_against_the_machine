@@ -3,6 +3,7 @@ from src.chunker.chunker_model import Chunk
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from tqdm import tqdm
+# from icecream import ic
 
 
 class ChunkOther(Chunk):

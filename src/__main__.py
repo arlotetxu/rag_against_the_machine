@@ -31,7 +31,7 @@ if __name__ == '__main__':
     except Exception as e:
         tb = traceback.extract_tb(sys.exc_info()[2])[-1]
         print(
-            f"{Colors.RED.value}[ERROR] - "
+            f"{Colors.RED.value}[ERROR] - [{type(e).__name__}]\n"
             f"Error during the process...\n"
             f"Details: {e} (occurred in {tb.filename} at line {tb.lineno})"
             f"{Colors.RESET.value}\n"

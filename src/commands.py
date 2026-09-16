@@ -1,3 +1,4 @@
+from pathlib import Path
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from src.indexer.indexer import Indexer
@@ -5,6 +6,16 @@ from src.retrieval.retrieval import Retrieval
 from icecream import ic
 
 ic.configureOutput(includeContext=True)
+
+'''
+# ========PENDING TASKS========
+
+[] - Modify the evaluate method in retrieval.py (refactor?)
+[] - Improve ranking performance
+[] - Modify error messages under constants.py/PathsAndNames
+[] - Last checks to open file exceptions
+
+'''
 
 
 def index(max_chunk_size: int = 2000) -> None:
@@ -31,17 +42,22 @@ def search(query: str, k: int) -> None:
     retrieval.get_query_chunks(query=query, k=k, print_=True)
 
 
-def search_dataset(dataset_path: str, k: int, save_directory: str) -> None:
+def search_dataset(
+        dataset_path: str,
+        k: int,
+        save_directory: str = "data/output/search_results") -> None:
     """
     Batch queries
     Uses StudentSearchResults to generate JSON
     """
-    ic(dataset_path)
-    ic(k)
-    ic(save_directory)
-    ic("From search")
+    dataset_file = Path(dataset_path)
+    save_folder = Path(save_directory)
+    save_folder.mkdir(parents=True, exist_ok=True)
+    output_path = save_folder / dataset_file.name
+
+    ic("From search_dataset")
     retrieval = Retrieval()
-    retrieval.get_batch_query_chunks(dataset_path, k, save_directory)
+    retrieval.get_batch_query_chunks(dataset_path, k, str(output_path))
 
 
 def answer() -> None:

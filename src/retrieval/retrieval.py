@@ -12,11 +12,10 @@ from src.entities.data_model import (
 from src.indexer.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 import numpy as np
-import uuid
 from tqdm import tqdm
 from typing import Any
 
-from icecream import ic
+# from icecream import ic
 
 
 class Retrieval:
@@ -83,7 +82,7 @@ class Retrieval:
             query_tokens.add(token)
         return list(query_tokens)
 
-    def get_indexes(self, query: str, k: int) -> Any:
+    def get_query_scores(self, query: str, k: int) -> Any:
 
         query_tokens = self.tokenize_query(query)
         scores = self.bm25_index.get_scores(
@@ -98,31 +97,32 @@ class Retrieval:
             self,
             query: str,
             k: int,
-            print_: bool = False) -> StudentSearchResults:
+            print_: bool = False) -> list[MinimalSource]:
 
-        chunk_indexes = self.get_indexes(query, k)
+        chunk_indexes = self.get_query_scores(query, k)
         minimal_source_lst = [
             self.chunks.chunks[index].metadata for index in chunk_indexes
             ]
 
-        minimal_search_result = MinimalSearchResults(
-            question_id=str(uuid.uuid4()),
-            question=query,
-            retrieved_sources=minimal_source_lst
-        )
-        result = StudentSearchResults(
-            search_results=[minimal_search_result],
-            k=k
-        )
+        # minimal_search_result = MinimalSearchResults(
+        #     question_id=str(uuid.uuid4()),
+        #     question=query,
+        #     retrieved_sources=minimal_source_lst
+        # )
+        # result = StudentSearchResults(
+        #     search_results=[minimal_search_result],
+        #     k=k
+        # )
 
         if print_:
-            for entry in result.search_results:
-                for source in entry.retrieved_sources:
-                    print(f"{source.file_path} ["
-                          f"{source.first_character_index}:"
-                          f"{source.last_character_index}]")
+            for entry in minimal_source_lst:
+                print(f"{entry.file_path} ["
+                      f"{entry.first_character_index}:"
+                      f"{entry.last_character_index}]")
 
-        return result
+        # return result
+        # return minimal_search_result
+        return minimal_source_lst
 
     def get_batch_query_chunks(self,
                                dataset_path: str,
@@ -145,6 +145,19 @@ class Retrieval:
             first_character_index: int
             last_character_index: int
         """
+        # # Check if the saving file already exists. If so, ask for a new
+        # save_path = Path(save_directory)
+        # file_exists = False
+        # if save_path.exists():
+        #     file_exists = True
+        # while file_exists:
+        #     print(f"{Colors.YELLOW.value}[WARNING] - "
+        #           f"The saving file already exists. Please, set a new file.")
+        #     new_path = input(f"New saving file path: "
+        #                      f"{Colors.RESET.value}")
+        #     if not Path(new_path).exists():
+        #         file_exists = False
+        #         save_directory = new_path
 
         try:
             with open(dataset_path, mode='r') as fdc:
@@ -157,8 +170,40 @@ class Retrieval:
                 ) from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
-        ic(type(dataset))
-        pass
+
+        minimal_result_list = []
+
+        for question in tqdm(dataset.rag_questions,
+                             desc="Getting the dataset result..."):
+            query_sources = self.get_query_chunks(question.question, k)
+            minimal_search_result = MinimalSearchResults(
+                question_id=question.question_id,
+                question=question.question,
+                retrieved_sources=query_sources
+            )
+            # retrieved_chunks = self.get_query_chunks(question.question, k)
+            minimal_result_list.append(minimal_search_result)
+
+        result = StudentSearchResults(
+            search_results=minimal_result_list,
+            k=k
+        )
+
+        # Saving result
+        try:
+            with open(save_directory, mode='w') as fd:
+                fd.write(result.model_dump_json(indent=2))
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{save_directory}'{ErrorCodes.PERMISSION.value} or "
+                f"{ErrorCodes.FILE_NOT_FOUND.value}"
+                ) from e
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+        print(f"{Colors.GREEN.value}"
+              f"Saved student_search_results to "
+              f"{save_directory}{Colors.RESET.value}")
 
     def get_iou(
             self,
@@ -200,16 +245,15 @@ class Retrieval:
             num_questions += 1
 
             # Getting the retrieved info
-            results: StudentSearchResults = \
+            results: list[MinimalSource] = \
                 self.get_query_chunks(question.question, k)
-            retrieved: list[MinimalSource] = [
-                source
-                for result in results.search_results
-                for source in result.retrieved_sources]
+            # retrieved: list[str] = [
+            #     source.file_path
+            #     for source in results]
 
             # Getting recall
             for k_i in k_values:
-                top_k = retrieved[:k_i]
+                top_k = results[:k_i]
                 found = 0
                 for correct in source:
                     for candidate in top_k:
