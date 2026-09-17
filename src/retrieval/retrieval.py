@@ -80,7 +80,9 @@ class Retrieval:
         query_tokens = set(query_tokens_other)
         for token in query_tokens_code:
             query_tokens.add(token)
-        return list(query_tokens)
+        query_tokens_lst = self.tokenizer.remove_stopwords(list(query_tokens))
+        query_tokens_lst = self.tokenizer.stem(query_tokens_lst)
+        return query_tokens_lst
 
     def get_query_scores(self, query: str, k: int) -> Any:
 
@@ -128,36 +130,6 @@ class Retrieval:
                                dataset_path: str,
                                k: int,
                                save_directory: str) -> None:
-        """
-        Uses StudentSearchResults to generate JSON
-
-        class StudentSearchResults(BaseModel):
-            search_results: list[MinimalSearchResults]
-            k: int
-
-        class MinimalSearchResults(BaseModel):
-            question_id: str
-            question: str
-            retrieved_sources: list[MinimalSource]
-
-        class MinimalSource(BaseModel):
-            file_path: str
-            first_character_index: int
-            last_character_index: int
-        """
-        # # Check if the saving file already exists. If so, ask for a new
-        # save_path = Path(save_directory)
-        # file_exists = False
-        # if save_path.exists():
-        #     file_exists = True
-        # while file_exists:
-        #     print(f"{Colors.YELLOW.value}[WARNING] - "
-        #           f"The saving file already exists. Please, set a new file.")
-        #     new_path = input(f"New saving file path: "
-        #                      f"{Colors.RESET.value}")
-        #     if not Path(new_path).exists():
-        #         file_exists = False
-        #         save_directory = new_path
 
         try:
             with open(dataset_path, mode='r') as fdc:
@@ -247,9 +219,6 @@ class Retrieval:
             # Getting the retrieved info
             results: list[MinimalSource] = \
                 self.get_query_chunks(question.question, k)
-            # retrieved: list[str] = [
-            #     source.file_path
-            #     for source in results]
 
             # Getting recall
             for k_i in k_values:

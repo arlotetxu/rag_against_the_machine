@@ -13,11 +13,14 @@ class ChunkOther(Chunk):
                 files_lst: dict[str, str],
                 chunks: dict[str, IndexedChunk],
                 max_chunk_size: int = 2000,
+                overlap: int = 150,
                 ) -> None:
 
         self.chunk_id = 0
         self.prefix = "id_"
         super().__init__(files_lst, chunks, max_chunk_size)
+        # The overlap must be smaller than the chunk or start never advances
+        self.overlap = min(overlap, self.max_chunk // 2)
 
     def chunk_others(self) -> dict[str, IndexedChunk]:
 
@@ -47,19 +50,15 @@ class ChunkOther(Chunk):
 
                 file_len = len(data)
                 start = 0
-                end = file_len if file_len <= self.max_chunk else \
-                    start + self.max_chunk
-                diff = end - start
 
-                while diff >= self.max_chunk:
-                    # Cutting the chunk in the previous /n
-                    end_prov = end
-                    while data[end_prov:end_prov + 1] != '\n':
-                        end_prov -= 1
-                        if end_prov <= start:
-                            end = start + self.max_chunk
-                            break
-                        end = end_prov
+                while start < file_len:
+                    end = min(start + self.max_chunk, file_len)
+                    if end < file_len:
+                        # Cutting the chunk in the previous \n, but only
+                        # beyond the overlap zone so start always advances
+                        cut = data.rfind('\n', start + self.overlap + 1, end)
+                        if cut != -1:
+                            end = cut
                     self.chunks[f"{self.prefix}{self.chunk_id}"] = \
                         IndexedChunk(text=data[start:end].strip(),
                                      metadata=MinimalSource(
@@ -67,19 +66,9 @@ class ChunkOther(Chunk):
                                          first_character_index=start,
                                          last_character_index=end))
                     self.chunk_id += 1
-                    start = end + 1
-                    to = len(data[start:])
-                    end = start + self.max_chunk if to > self.max_chunk else \
-                        start + to
-                    diff = end - start
-
-                self.chunks[f"{self.prefix}{self.chunk_id}"] = \
-                    IndexedChunk(text=data[start:end].strip(),
-                                 metadata=MinimalSource(
-                                     file_path=path,
-                                     first_character_index=start,
-                                     last_character_index=end))
-                self.chunk_id += 1
+                    if end >= file_len:
+                        break
+                    start = end - self.overlap
 
             except FileNotFoundError as e:
                 raise FileNotFoundError(

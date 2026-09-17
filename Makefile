@@ -61,26 +61,41 @@ run: install
 # 	@read -p "Enter the configuration file path: " MY_CONFIG; \
 # 	uv run $(MAIN_FILE) $$MY_CONFIG
 # 	uv run $(MAIN_FILE)
+	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
 	uv run -m src index --max_chunk_size 2000
 
 index: install
+	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
 	uv run python3 -m src index --max_chunk_size 2000
 
 search: install
+	@echo "$(MAGENTA)SEARCH A SINGLE QUERY...$(DEF_COLOR)"
 	@read -p "Query: " QUERY;\
 	read -p "K value: " K_VALUE;\
 	uv run python3 -m src search "$$QUERY" --k "$$K_VALUE"
 
 search_dataset: install
+	@echo "$(MAGENTA)SEARCH DATASET...$(DEF_COLOR)"
 	@read -p "Dataset path: " DATASET_PATH;\
 	read -p "Saving path: " SAVING_PATH;\
 	read -p "K value: " K_VALUE;\
 	uv run python3 -m src search_dataset "$$DATASET_PATH" --k "$$K_VALUE" "$$SAVING_PATH"
 
 evaluate: install
+	@echo "$(MAGENTA)EVALUATING...$(DEF_COLOR)"
 	@read -p "Path to dataset: " DATASET_PATH;\
 	read -p "K value: " K_VALUE;\
-	uv run python3 -m src evaluate "$$DATASET_PATH" --k "$$K_VALUE" 
+	uv run python3 -m src evaluate "$$DATASET_PATH" --k "$$K_VALUE"
+
+moulinette: install index search_dataset
+	@echo "$(MAGENTA)MOULINETTE EVALUATION...$(DEF_COLOR)"
+	@read -p "Student file path: " STUDENT_PATH;\
+	read -p "Dataset path: " DATASET_PATH;\
+	read -p "K_value: " K_VALUE;\
+	read -p "Max chunk size: " CHUNK_SIZE;\
+	docker run --rm --platform linux/amd64 -v "$(PWD)":/app -w /app debian:bookworm-slim \
+	  ./moulinette evaluate_student_search_results \
+	  "$$STUDENT_PATH" "$$DATASET_PATH" --k "$$K_VALUE" --max_context_length "$$CHUNK_SIZE"
 
 debug: install
 	@echo "$(YELLOW)Entering debugging mode...$(DEF_COLOR)"

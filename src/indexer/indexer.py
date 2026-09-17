@@ -18,7 +18,7 @@ from src.chunker.gen_other_chunks import ChunkOther
 class Indexer:
 
     def __init__(
-            self, max_chunk_size: int = 2000, min_chunk_tokens: int = 25
+            self, max_chunk_size: int = 2000, min_chunk_tokens: int = 15
             ) -> None:
         self.max_chunk = max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
@@ -55,6 +55,8 @@ class Indexer:
                 tokens.extend(tokenizer.tokenize_code(path))
             else:
                 tokens.extend(tokenizer.tokenize_other(path))
+            tokens = tokenizer.remove_stopwords(tokens)
+            tokens = tokenizer.stem(tokens)
             corpus_tokens.append(tokens)
 
         for id in discarded:
@@ -63,7 +65,17 @@ class Indexer:
 
     def bm25_index(self) -> BM25Okapi:
         corpus_tokens = self.tokenize_chunks()
-        bm25_index = BM25Okapi(corpus_tokens)  # type: ignore[no-untyped-call]
+        # for k1 in (0.9, 1.2, 1.5, 2.0):
+        #     for b in (0.3, 0.5, 0.75, 0.9):
+        #         bm25_index = BM25Okapi(
+        #           corpus_tokens, k1=k1, b=b)  # type: ignore[no-untyped-call]
+        #         self.save_index_chunks(bm25_index)
+        #         ic(k1, b)
+        #         Retrieval().get_recall(
+        #             "data/datasets/AnsweredQuestions/dataset_code_public.json",
+        #             5)
+        bm25_index = BM25Okapi(
+            corpus_tokens, k1=1.5, b=0.3)  # type: ignore[no-untyped-call]
         return bm25_index
 
     def save_index_chunks(self, bm25_index: BM25Okapi) -> None:
