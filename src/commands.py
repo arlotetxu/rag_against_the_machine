@@ -3,6 +3,7 @@ from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from src.indexer.indexer import Indexer
 from src.retrieval.retrieval import Retrieval
+from src.evaluate.evaluate import Evaluate
 from icecream import ic
 
 ic.configureOutput(includeContext=True)
@@ -79,10 +80,12 @@ def answer_dataset(student_search_results_path: str,
     pass
 
 
-def evaluate(dataset_path: str, k: int) -> None:
+def evaluate(student_search_results_path: str,
+             dataset_path: str,
+             k: int) -> None:
     """
     The test function to check the results
     """
     ic("From evaluate")
-    retrieval = Retrieval()
-    retrieval.get_recall(dataset_path, k)
+    evaluate = Evaluate()
+    evaluate.get_recall(student_search_results_path, dataset_path, k)

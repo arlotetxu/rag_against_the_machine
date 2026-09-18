@@ -55,18 +55,19 @@ install: pyproject.toml
 	@uv sync --all-groups
 	@echo "$(GREEN)Dependencies installed!!$(DEF_COLOR)"
 
-run: install
+run: install index
 
 	@echo "$(GRAY)$$HEADER$(DEF_COLOR)"
 # 	@read -p "Enter the configuration file path: " MY_CONFIG; \
 # 	uv run $(MAIN_FILE) $$MY_CONFIG
 # 	uv run $(MAIN_FILE)
-	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
-	uv run -m src index --max_chunk_size 2000
+# 	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
+# 	uv run -m src index --max_chunk_size 2000
 
 index: install
 	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
-	uv run python3 -m src index --max_chunk_size 2000
+	@read -p "Enter chunk size: " CHUNK_SIZE;\
+	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE"
 
 search: install
 	@echo "$(MAGENTA)SEARCH A SINGLE QUERY...$(DEF_COLOR)"
@@ -83,9 +84,10 @@ search_dataset: install
 
 evaluate: install
 	@echo "$(MAGENTA)EVALUATING...$(DEF_COLOR)"
-	@read -p "Path to dataset: " DATASET_PATH;\
+	@read -p "Student file path: " STUDENT_PATH;\
+	read -p "Path to dataset: " DATASET_PATH;\
 	read -p "K value: " K_VALUE;\
-	uv run python3 -m src evaluate "$$DATASET_PATH" --k "$$K_VALUE"
+	uv run python3 -m src evaluate "$$STUDENT_PATH" "$$DATASET_PATH" --k "$$K_VALUE"
 
 moulinette: install index search_dataset
 	@echo "$(MAGENTA)MOULINETTE EVALUATION...$(DEF_COLOR)"

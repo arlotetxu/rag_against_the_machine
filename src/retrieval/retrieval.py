@@ -106,24 +106,12 @@ class Retrieval:
             self.chunks.chunks[index].metadata for index in chunk_indexes
             ]
 
-        # minimal_search_result = MinimalSearchResults(
-        #     question_id=str(uuid.uuid4()),
-        #     question=query,
-        #     retrieved_sources=minimal_source_lst
-        # )
-        # result = StudentSearchResults(
-        #     search_results=[minimal_search_result],
-        #     k=k
-        # )
-
         if print_:
             for entry in minimal_source_lst:
                 print(f"{entry.file_path} ["
                       f"{entry.first_character_index}:"
                       f"{entry.last_character_index}]")
 
-        # return result
-        # return minimal_search_result
         return minimal_source_lst
 
     def get_batch_query_chunks(self,
@@ -176,83 +164,3 @@ class Retrieval:
         print(f"{Colors.GREEN.value}"
               f"Saved student_search_results to "
               f"{save_directory}{Colors.RESET.value}")
-
-    def get_iou(
-            self,
-            original: tuple[int, int],
-            retrieved: tuple[int, int]) -> float:
-
-        orig_start, orig_end = original
-        retr_start, retr_end = retrieved
-
-        num = max(0, min(orig_end, retr_end) - max(orig_start, retr_start) + 1)
-        denom = (orig_end - orig_start + 1) + (retr_end - retr_start + 1) - num
-
-        return (num / denom) if denom > 0 else 0.0
-
-    def get_recall(self, dataset_path: str, k: int) -> None:
-
-        try:
-            with open(dataset_path, mode='r') as fdc:
-                dataset = RagDataset.model_validate_json(fdc.read())
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                ) from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
-
-        k_values = list(range(1, k+1))
-        score = {k_i: 0.0 for k_i in k_values}
-        num_questions = 0
-
-        for question in tqdm(
-                dataset.rag_questions, desc=f"Calculating Recall@{k}..."):
-            # Getting source info and saving into a dict[str, tuple(int, int)]
-            source: list[MinimalSource] = question.sources
-            if not source:
-                continue
-            num_questions += 1
-
-            # Getting the retrieved info
-            results: list[MinimalSource] = \
-                self.get_query_chunks(question.question, k)
-
-            # Getting recall
-            for k_i in k_values:
-                top_k = results[:k_i]
-                found = 0
-                for correct in source:
-                    for candidate in top_k:
-                        if candidate.file_path != correct.file_path:
-                            continue
-                        iou = self.get_iou(
-                            (correct.first_character_index,
-                             correct.last_character_index),
-                            (candidate.first_character_index,
-                             candidate.last_character_index))
-                        # ic(iou)
-                        if iou > 0.05:
-                            found += 1
-                            break
-                score[k_i] += found / len(source)
-        if num_questions > 0:
-            final_result = {
-                k_i: score[k_i] / num_questions for k_i in k_values}
-        else:
-            final_result = {k: 0.0 for k in k_values}
-        self.get_print_recall(final_result, num_questions)
-
-    def get_print_recall(
-            self, final_result: dict[int, float],
-            num_questions: int) -> None:
-        print()
-        print("Evaluation Results")
-        print("==" * 15)
-        print(f"Questions evaluated: {num_questions}")
-        for k, result in final_result.items():
-            print(f"{Colors.YELLOW.value}"
-                  f"Recall@{k}: {result:.2f} ({result * 100:.2f}%)")
-        print(f"{Colors.RESET.value}")
