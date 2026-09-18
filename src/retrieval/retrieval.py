@@ -3,6 +3,7 @@ import pydantic
 from src.aux.constants import PathsAndNames
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
+from src.aux.constants import TQDM_FMT
 from src.entities.data_model import (
     RagIndex,
     MinimalSource,
@@ -34,16 +35,16 @@ class Retrieval:
         try:
             with open(path, mode='rb') as fd:
                 bm25_index = pickle.load(fd)
-        except FileNotFoundError:
+        except OSError:
             raise FileNotFoundError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The index file '{path}'{ErrorCodes.FILE_NOT_FOUND.value}"
+                f"The index file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )
-        except PermissionError:
-            raise PermissionError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The index file '{path}'{ErrorCodes.PERMISSION.value}"
-                )
+        # except PermissionError:
+        #     raise PermissionError(
+        #         f"{Colors.RED.value}[ERROR] - "
+        #         f"The index file '{path}'{ErrorCodes.PERMISSION.value}"
+        #         )
 
         return bm25_index
 
@@ -56,20 +57,19 @@ class Retrieval:
         try:
             with open(path, mode='r') as fd:
                 ragindex_chunks = RagIndex.model_validate_json(fd.read())
-        except FileNotFoundError:
+        except OSError:
             raise FileNotFoundError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The chunks file '{path}'{ErrorCodes.FILE_NOT_FOUND.value}"
+                f"The chunks file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )
-        except PermissionError:
-            raise PermissionError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The chunks file '{path}'{ErrorCodes.PERMISSION.value}"
-                )
+        # except PermissionError:
+        #     raise PermissionError(
+        #         f"{Colors.RED.value}[ERROR] - "
+        #         f"The chunks file '{path}'{ErrorCodes.PERMISSION.value}"
+        #         )
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
-        # ic(chunks.chunks[0].metadata)
         return ragindex_chunks
 
     def tokenize_query(self, query: str) -> list[str]:
@@ -123,18 +123,17 @@ class Retrieval:
             with open(dataset_path, mode='r') as fdc:
                 dataset = RagDataset.model_validate_json(fdc.read())
         except OSError as e:
-            raise OSError(
+            raise FileNotFoundError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                ) from e
+                f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
         minimal_result_list = []
 
         for question in tqdm(dataset.rag_questions,
-                             desc="Getting the dataset result..."):
+                             desc="Getting the dataset result...",
+                             bar_format=TQDM_FMT):
             query_sources = self.get_query_chunks(question.question, k)
             minimal_search_result = MinimalSearchResults(
                 question_id=question.question_id,
@@ -156,9 +155,8 @@ class Retrieval:
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{save_directory}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                ) from e
+                f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}") \
+                    from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
         print(f"{Colors.GREEN.value}"

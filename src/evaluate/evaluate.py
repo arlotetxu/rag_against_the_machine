@@ -1,6 +1,7 @@
 import pydantic
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
+from src.aux.constants import TQDM_FMT
 from src.entities.data_model import (
     MinimalSource,
     StudentSearchResults,
@@ -38,9 +39,7 @@ class Evaluate:
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{dataset_path}'{ErrorCodes.PERMISSION.value} or "
-                f"{ErrorCodes.FILE_NOT_FOUND.value}"
-                ) from e
+                f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
@@ -48,8 +47,9 @@ class Evaluate:
         score = {k_i: 0.0 for k_i in k_values}
         num_questions = 0
 
-        for question in tqdm(
-                dataset.rag_questions, desc=f"Calculating Recall@{k}..."):
+        for question in tqdm(dataset.rag_questions,
+                             desc=f"Calculating Recall@{k}...",
+                             bar_format=TQDM_FMT):
             # Getting source info and saving into a dict[str, tuple(int, int)]
             source: list[MinimalSource] = question.sources
             if not source:

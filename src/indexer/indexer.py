@@ -4,6 +4,7 @@ from tqdm import tqdm
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from src.aux.constants import PathsAndNames
+from src.aux.constants import TQDM_FMT
 from src.indexer.tokenizer import Tokenizer
 from rank_bm25 import BM25Okapi
 from src.entities.data_model import IndexedChunk, RagIndex
@@ -32,7 +33,9 @@ class Indexer:
             for file in files:
                 self.files_lst[f"id{index}"] = (os.path.join(root, file))
                 index += 1
-        print(f"Documents read: {len(self.files_lst)}")
+        print(f"{Colors.GREEN.value}"
+              f"Documents read: {len(self.files_lst)}"
+              f"{Colors.RESET.value}")
 
     def get_extension(self, doc_path: str) -> str:
         return (Path(doc_path).suffix)
@@ -41,7 +44,9 @@ class Indexer:
         corpus_tokens: list[list[str]] = []
         discarded: list[str] = []
         tokenizer = Tokenizer()
-        for id, meta in tqdm(self.chunks.items(), desc="Tokenizing..."):
+        for id, meta in tqdm(self.chunks.items(),
+                             desc="Tokenizing...",
+                             bar_format=TQDM_FMT):
             path = meta.metadata.file_path
             is_py = Path(path).suffix == '.py'
             if is_py:
@@ -89,7 +94,7 @@ class Indexer:
                 pickle.dump(bm25_index, fd)
         except PermissionError as e:
             raise PermissionError(
-                f"{Colors.YELLOW.value}[WARNING] -  "
+                f"{Colors.RED.value}[ERROR] -  "
                 f"The file {path_2_save / file_2_save}"
                 f"{ErrorCodes.PERMISSION.value}"
                 f"{Colors.RESET.value}") from e
@@ -102,7 +107,7 @@ class Indexer:
                 fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
         except PermissionError as e:
             raise PermissionError(
-                f"{Colors.YELLOW.value}[WARNING] -  "
+                f"{Colors.YELLOW.value}[ERROR] -  "
                 f"The file {path}"
                 f"{ErrorCodes.PERMISSION.value}"
                 f"{Colors.RESET.value}") from e

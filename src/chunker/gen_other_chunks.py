@@ -2,6 +2,7 @@ from src.entities.data_model import IndexedChunk, MinimalSource
 from src.chunker.chunker_model import Chunk
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
+from src.aux.constants import TQDM_FMT
 from tqdm import tqdm
 # from icecream import ic
 
@@ -33,7 +34,9 @@ class ChunkOther(Chunk):
                         if self.get_extension(doc_path) not in bin_extensions}
         self.chunk_id = 0
 
-        for _, path in tqdm(generic_docs.items(), desc="Chunking other files"):
+        for _, path in tqdm(generic_docs.items(),
+                            desc="Chunking other files",
+                            bar_format=TQDM_FMT):
             if path.endswith(".DS_Store"):
                 continue
             try:

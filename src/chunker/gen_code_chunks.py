@@ -2,6 +2,7 @@ from src.entities.data_model import IndexedChunk, MinimalSource
 from src.chunker.chunker_model import Chunk
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
+from src.aux.constants import TQDM_FMT
 from tree_sitter import Language, Parser, Node
 import tree_sitter_python as tspython
 from tqdm import tqdm
@@ -96,8 +97,9 @@ class ChunkerCode(Chunk):
         parser = Parser(py_language)
 
         try:
-            for _, py_path in tqdm(
-                    py_docs.items(), desc="Chunking .py files"):
+            for _, py_path in tqdm(py_docs.items(),
+                                   desc="Chunking .py files",
+                                   bar_format=TQDM_FMT):
 
                 data_b, childrens = self.get_children(py_path, parser)
                 # Getting the import block unified
