@@ -74,6 +74,10 @@ def search_dataset(
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}")
     save_folder = Path(save_directory)
+
+    if dataset_file.parent == save_folder:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}")
     save_folder.mkdir(parents=True, exist_ok=True)
     output_path = save_folder / dataset_file.name
 

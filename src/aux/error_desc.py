@@ -26,5 +26,8 @@ class ErrorCodes(Enum):
 
     SAVE_FOLDER_NOK = "The save directory indicated is not a valid string."
 
+    SAVE_FOLDER_EQ_DATASET = "Saving path and dataset path cannot be the"\
+        " same. Otherwise, dataset would be overwritten."
+
     STUDENT_FILE_NOK = "The file indicated as student file is not a valid "\
         "string or does not exists."
