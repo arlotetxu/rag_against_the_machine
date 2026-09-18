@@ -3,7 +3,7 @@ from enum import Enum
 
 class ErrorCodes(Enum):
     MAX_SIZE_CHUNK = "max_chunk_size needs to be less than 2001. " \
-        "Applying default max value: 2000."
+        "Applying default max value: 800."
 
     FILE_NOT_FOUND = " couldn't be found. Please check it. "
 

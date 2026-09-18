@@ -18,9 +18,9 @@ from src.chunker.gen_other_chunks import ChunkOther
 class Indexer:
 
     def __init__(
-            self, max_chunk_size: int = 2000, min_chunk_tokens: int = 15
+            self, max_chunk_size: int = 800, min_chunk_tokens: int = 15
             ) -> None:
-        self.max_chunk = max_chunk_size
+        self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}

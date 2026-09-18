@@ -11,8 +11,8 @@ ic.configureOutput(includeContext=True)
 '''
 # ========PENDING TASKS========
 
-[] - Modify the evaluate method in retrieval.py (refactor?)
-[] - Improve ranking performance
+[X] - Modify the evaluate method in retrieval.py (refactor?)
+[X] - Improve ranking performance
 [] - Modify error messages under constants.py/PathsAndNames
 [] - Last checks to open file exceptions
 
@@ -25,7 +25,7 @@ def index(max_chunk_size: int = 2000) -> None:
     Uses MinimalSource
     """
     if max_chunk_size > 2000:
-        max_chunk_size = 2000
+        max_chunk_size = 800
         print(f"{Colors.YELLOW.value}[WARNING] - "
               f"{ErrorCodes.MAX_SIZE_CHUNK.value}"
               f"{Colors.RESET.value}")
