@@ -14,7 +14,9 @@ dependencies = [
     "pre-commit>=4.6.2",
     "pydantic>=2.13.5",
     "rank-bm25>=0.2.2",
+    "torch>=2.14.0",
     "tqdm>=4.70.0",
+    "transformers>=5.17.0",
     "tree-sitter>=0.26.0",
     "tree-sitter-python>=0.25.0",
 ]
