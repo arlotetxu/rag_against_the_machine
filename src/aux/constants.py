@@ -9,6 +9,9 @@ class PathsAndNames(Enum):
     chunks_json = "/chunks.json"
 
 
+DOC_BOOST = 1.2
+DOC_EXTENSIONS = ('.md', '.txt', '.rst')
+
 TQDM_FMT = (
     "{desc:<32}{percentage:3.0f}%|{bar:30}| "
     "{n_fmt:>6}/{total_fmt:<6} [{elapsed}<{remaining}]"

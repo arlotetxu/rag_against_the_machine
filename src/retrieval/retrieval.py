@@ -3,7 +3,7 @@ import pydantic
 from src.aux.constants import PathsAndNames
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
-from src.aux.constants import TQDM_FMT
+from src.aux.constants import TQDM_FMT, DOC_BOOST, DOC_EXTENSIONS
 from src.entities.data_model import (
     RagIndex,
     MinimalSource,
@@ -25,6 +25,9 @@ class Retrieval:
         self.tokenizer: Tokenizer = Tokenizer()
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
+        self.doc_weights = np.array([
+            DOC_BOOST if chunk.metadata.file_path.endswith(DOC_EXTENSIONS)
+            else 1.0 for chunk in self.chunks.chunks])
 
     def get_bm25_index(self) -> Any:
 
@@ -89,6 +92,7 @@ class Retrieval:
         query_tokens = self.tokenize_query(query)
         scores = self.bm25_index.get_scores(
             query_tokens)  # type: ignore[no-untyped-call]
+        scores = scores * self.doc_weights
         # Returns the indices that would sort an array:
         scores = np.argsort(scores, descending=True)
         scores = scores.tolist()

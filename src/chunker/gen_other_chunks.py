@@ -14,7 +14,7 @@ class ChunkOther(Chunk):
                 files_lst: dict[str, str],
                 chunks: dict[str, IndexedChunk],
                 max_chunk_size: int = 2000,
-                overlap: int = 150,
+                overlap: int = 100,
                 ) -> None:
 
         self.chunk_id = 0

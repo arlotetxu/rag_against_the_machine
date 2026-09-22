@@ -36,7 +36,7 @@ llm = Llama.from_pretrained(
 
 
 messages = [
-    {"role": "user", "content": "where is Llodio village located in Spain? /no_think"},
+    {"role": "user", "content": "What HTTP endpoint is used to dynamically load a LoRA adapter in vLLM? /no_think"},
 ]
 
 respuesta = llm.create_chat_completion(

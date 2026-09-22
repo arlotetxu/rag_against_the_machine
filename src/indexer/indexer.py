@@ -13,13 +13,15 @@ from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
 
+# from src.retrieval.retrieval import Retrieval
+# from src.evaluate.evaluate import Evaluate
 # from icecream import ic
 
 
 class Indexer:
 
     def __init__(
-            self, max_chunk_size: int = 800, min_chunk_tokens: int = 15
+            self, max_chunk_size: int = 800, min_chunk_tokens: int = 10
             ) -> None:
         self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
@@ -69,18 +71,26 @@ class Indexer:
         return corpus_tokens
 
     def bm25_index(self) -> BM25Okapi:
+        """
+        0.9, 1.2, 1.5, 1.8,
+        , 0.5, 0.75, 0.9
+        """
         corpus_tokens = self.tokenize_chunks()
-        # for k1 in (0.9, 1.2, 1.5, 2.0):
-        #     for b in (0.3, 0.5, 0.75, 0.9):
-        #         bm25_index = BM25Okapi(
-        #           corpus_tokens, k1=k1, b=b)  # type: ignore[no-untyped-call]
-        #         self.save_index_chunks(bm25_index)
-        #         ic(k1, b)
-        #         Retrieval().get_recall(
-        #             "data/datasets/AnsweredQuestions/dataset_code_public.json",
-        #             5)
+        # for k1 in (1.9, 2.0, 2.1, 2.2):
+        #     bm25_index = BM25Okapi(
+        #         corpus_tokens, k1=k1, b=0.3)  # type: ignore[no-untyped-call]
+        #     self.save_index_chunks(bm25_index)
+        #     ic(k1)
+        #     Retrieval().get_batch_query_chunks(
+        #         "data/datasets/private/AnsweredQuestions/dataset_docs_private.json",
+        #         10,
+        #         "data/output/AnsweredQuestions/dataset_docs_private.json")
+        #     Evaluate().get_recall(
+        #         "data/output/AnsweredQuestions/dataset_docs_private.json",
+        #         "data/datasets/private/AnsweredQuestions/dataset_docs_private.json",
+        #         10)
         bm25_index = BM25Okapi(
-            corpus_tokens, k1=1.5, b=0.3)  # type: ignore[no-untyped-call]
+            corpus_tokens, k1=2.0, b=0.3)  # type: ignore[no-untyped-call]
         return bm25_index
 
     def save_index_chunks(self, bm25_index: BM25Okapi) -> None:

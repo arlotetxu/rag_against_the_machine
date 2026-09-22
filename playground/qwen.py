@@ -31,7 +31,7 @@ model = AutoModelForCausalLM.from_pretrained(
 
 
 messages = [
-    {"role": "user", "content": "where is Llodio?"},
+    {"role": "user", "content": "What HTTP endpoint is used to dynamically load a LoRA adapter in vLLM?"},
 ]
 
 inputs = tokenizer.apply_chat_template(
@@ -44,7 +44,7 @@ inputs = tokenizer.apply_chat_template(
 ).to(model.device)
 
 with torch.inference_mode():
-    outputs = model.generate(**inputs, max_new_tokens=40)
+    outputs = model.generate(**inputs, max_new_tokens=120)
 
 outputs = model.generate(**inputs, max_new_tokens=40)
 print(tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:]))
