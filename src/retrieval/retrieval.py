@@ -3,7 +3,7 @@ import pydantic
 from src.aux.constants import PathsAndNames
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
-from src.aux.constants import TQDM_FMT, DOC_BOOST, DOC_EXTENSIONS
+from src.aux.constants import TQDM_FMT, MIN_RATIO, BOOST
 from src.entities.data_model import (
     RagIndex,
     MinimalSource,
@@ -25,9 +25,7 @@ class Retrieval:
         self.tokenizer: Tokenizer = Tokenizer()
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
-        self.doc_weights = np.array([
-            DOC_BOOST if chunk.metadata.file_path.endswith(DOC_EXTENSIONS)
-            else 1.0 for chunk in self.chunks.chunks])
+        self.booster = self.calculate_boosters()
 
     def get_bm25_index(self) -> Any:
 
@@ -43,11 +41,6 @@ class Retrieval:
                 f"{Colors.RED.value}[ERROR] - "
                 f"The index file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )
-        # except PermissionError:
-        #     raise PermissionError(
-        #         f"{Colors.RED.value}[ERROR] - "
-        #         f"The index file '{path}'{ErrorCodes.PERMISSION.value}"
-        #         )
 
         return bm25_index
 
@@ -65,11 +58,6 @@ class Retrieval:
                 f"{Colors.RED.value}[ERROR] - "
                 f"The chunks file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )
-        # except PermissionError:
-        #     raise PermissionError(
-        #         f"{Colors.RED.value}[ERROR] - "
-        #         f"The chunks file '{path}'{ErrorCodes.PERMISSION.value}"
-        #         )
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
@@ -87,12 +75,32 @@ class Retrieval:
         query_tokens_lst = self.tokenizer.stem(query_tokens_lst)
         return query_tokens_lst
 
+    def calculate_boosters(self) -> np.ndarray:
+        py_chunks = sum(1
+                        for chunk in self.chunks.chunks
+                        if chunk.metadata.file_path.endswith('.py')
+                        )
+        doc_chunks = len(self.chunks.chunks) - py_chunks
+        total_chunks = len(self.chunks.chunks)
+        if (py_chunks / total_chunks) < MIN_RATIO:
+            calc_booster = np.array([
+                BOOST if chunk.metadata.file_path.endswith('.py')
+                else 1.0 for chunk in self.chunks.chunks])
+        elif (doc_chunks / total_chunks) < MIN_RATIO:
+            docs_extension = ('.md', '.txt', '.rst')
+            calc_booster = np.array([
+                BOOST if chunk.metadata.file_path.endswith(docs_extension)
+                else 1.0 for chunk in self.chunks.chunks])
+        else:
+            calc_booster = np.array([1.0 for chunk in self.chunks.chunks])
+        return calc_booster
+
     def get_query_scores(self, query: str, k: int) -> Any:
 
         query_tokens = self.tokenize_query(query)
         scores = self.bm25_index.get_scores(
             query_tokens)  # type: ignore[no-untyped-call]
-        scores = scores * self.doc_weights
+        scores = scores * self.booster
         # Returns the indices that would sort an array:
         scores = np.argsort(scores, descending=True)
         scores = scores.tolist()
@@ -117,6 +125,24 @@ class Retrieval:
                       f"{entry.last_character_index}]")
 
         return minimal_source_lst
+
+    def save_json(
+            self,
+            save_directory: str,
+            result: StudentSearchResults) -> None:
+        try:
+            with open(save_directory, mode='w') as fd:
+                fd.write(result.model_dump_json(indent=2))
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}") \
+                    from e
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+        print(f"{Colors.GREEN.value}"
+              f"Saved student_search_results to "
+              f"{save_directory}{Colors.RESET.value}")
 
     def get_batch_query_chunks(self,
                                dataset_path: str,
@@ -144,25 +170,11 @@ class Retrieval:
                 question=question.question,
                 retrieved_sources=query_sources
             )
-            # retrieved_chunks = self.get_query_chunks(question.question, k)
             minimal_result_list.append(minimal_search_result)
 
         result = StudentSearchResults(
             search_results=minimal_result_list,
             k=k
         )
-
         # Saving result
-        try:
-            with open(save_directory, mode='w') as fd:
-                fd.write(result.model_dump_json(indent=2))
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}") \
-                    from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
-        print(f"{Colors.GREEN.value}"
-              f"Saved student_search_results to "
-              f"{save_directory}{Colors.RESET.value}")
+        self.save_json(save_directory, result)

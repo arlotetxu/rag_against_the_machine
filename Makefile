@@ -69,13 +69,13 @@ index: install
 	@read -p "Enter chunk size: " CHUNK_SIZE;\
 	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE"
 
-search: install
+search: install index
 	@echo "$(MAGENTA)SEARCH A SINGLE QUERY...$(DEF_COLOR)"
 	@read -p "Query: " QUERY;\
 	read -p "K value: " K_VALUE;\
 	uv run python3 -m src search "$$QUERY" --k "$$K_VALUE"
 
-search_dataset: install
+search_dataset: install index
 	@echo "$(MAGENTA)SEARCH DATASET...$(DEF_COLOR)"
 	@read -p "Dataset path: " DATASET_PATH;\
 	read -p "Saving path: " SAVING_PATH;\

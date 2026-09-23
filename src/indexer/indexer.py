@@ -142,5 +142,6 @@ class Indexer:
             ).chunk_others()
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
+
         except (FileNotFoundError, PermissionError) as e:
             raise Exception(e)
