@@ -12,6 +12,8 @@ class PathsAndNames(Enum):
 MIN_RATIO = 0.3
 BOOST = 1.2
 
+K_FOR_ANSWER = 3
+
 TQDM_FMT = (
     "{desc:<32}{percentage:3.0f}%|{bar:30}| "
     "{n_fmt:>6}/{total_fmt:<6} [{elapsed}<{remaining}]"

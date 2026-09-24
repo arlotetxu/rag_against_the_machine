@@ -82,6 +82,18 @@ search_dataset: install index
 	read -p "K value: " K_VALUE;\
 	uv run python3 -m src search_dataset "$$DATASET_PATH" --k "$$K_VALUE" "$$SAVING_PATH"
 
+answer: install index
+	@echo "$(MAGENTA)ANSWERING A QUERY...$(DEF_COLOR)"
+	@read -p "Query: " QUERY;\
+	read -p "K value: " K_VALUE;\
+	uv run python3 -m src answer "$$QUERY" --k "$$K_VALUE"
+
+answer_dataset: install
+	@echo "$(MAGENTA)ANSWERING A QUERY...$(DEF_COLOR)"
+	@read -p "Student file path: " STUDENT_PATH;\
+	read -p "Saving path: " SAVING_PATH;\
+	uv run python3 -m src answer_dataset "$$STUDENT_PATH" "$$SAVING_PATH"
+
 evaluate: install
 	@echo "$(MAGENTA)EVALUATING...$(DEF_COLOR)"
 	@read -p "Student file path: " STUDENT_PATH;\

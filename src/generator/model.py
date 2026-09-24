@@ -18,36 +18,17 @@ class Model:
 
         # Auto-select device with priority: mps > cuda > cpu
         if torch.backends.mps.is_available():
-            device = "mps"
+            self.device = "mps"
         elif torch.cuda.is_available():
-            device = "cuda"
+            self.device = "cuda"
         else:
-            device = "cpu"
+            self.device = "cpu"
 
-        _dtype = torch.float16 if device in ["cuda", "mps"] else torch.float32
+        _dtype = torch.float16 if self.device in ["cuda", "mps"] else \
+            torch.float32
 
         self.model = AutoModelForCausalLM.from_pretrained(
             MODEL_NAME,
             dtype=_dtype,
             trust_remote_code=True,
-            ).to(device)  # type: ignore[arg-type]
-
-
-# messages = [
-#     {"role": "user", "content": "where is Llodio?"},
-# ]
-
-# inputs = tokenizer.apply_chat_template(
-# 	messages,
-# 	add_generation_prompt=True,
-# 	tokenize=True,
-# 	return_dict=True,
-# 	return_tensors="pt",
-#     enable_thinking=False,
-# ).to(model.device)
-
-# outputs = model.generate(**inputs, max_new_tokens=40, do_sample=False)
-# Deactivating this option used to train the model saving memory
-# with torch.inference_mode():
-#     outputs = self.model.generate(**inputs, max_new_tokens=40)
-# print(tokenizer.decode(outputs[0][inputs["input_ids"].shape[-1]:]))
+            ).to(self.device)  # type: ignore[arg-type]

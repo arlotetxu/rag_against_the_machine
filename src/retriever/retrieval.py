@@ -153,7 +153,7 @@ class Retrieval:
             with open(dataset_path, mode='r') as fdc:
                 dataset = RagDataset.model_validate_json(fdc.read())
         except OSError as e:
-            raise FileNotFoundError(
+            raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
         except pydantic.ValidationError as e:
