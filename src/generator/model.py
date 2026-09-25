@@ -3,13 +3,16 @@ import torch
 
 MODEL_NAME = "Qwen/Qwen3-0.6B"
 MODEL_NAME2 = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+MODEL_NAME3 = "Qwen/Qwen2.5-0.5B-Instruct"
+MODEL_NAME4 = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
 
 class Model:
 
     def __init__(self) -> None:
+        my_model = MODEL_NAME
         self.tokenizer = AutoTokenizer.from_pretrained(
-            MODEL_NAME,
+            my_model,
             trust_remote_code=True)
 
         if self.tokenizer.pad_token_id is None:
@@ -28,7 +31,7 @@ class Model:
             torch.float32
 
         self.model = AutoModelForCausalLM.from_pretrained(
-            MODEL_NAME,
+            my_model,
             dtype=_dtype,
             trust_remote_code=True,
             ).to(self.device)  # type: ignore[arg-type]

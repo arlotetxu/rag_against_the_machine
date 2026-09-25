@@ -12,6 +12,7 @@ class PathsAndNames(Enum):
 MIN_RATIO = 0.3
 BOOST = 1.2
 
+MAX_OUT_TOKENS = 200
 K_FOR_ANSWER = 3
 
 TQDM_FMT = (

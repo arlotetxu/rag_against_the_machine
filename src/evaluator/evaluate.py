@@ -31,6 +31,7 @@ class Evaluate:
             dataset_path: str,
             k: int) -> None:
 
+        # Getting info from needed files
         try:
             with open(student_search_results_path, mode='r') as fds:
                 student = StudentSearchResults.model_validate_json(fds.read())
@@ -42,6 +43,16 @@ class Evaluate:
                 f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
+
+        # Checking f the k value indicated is greater than sources available
+        max_k = len(student.search_results[0].retrieved_sources)
+        if k > max_k:
+            print(
+                f"{Colors.YELLOW.value}[WARNING] - "
+                f"The k value indicated is greater than sources in student "
+                f"file sources. Changing to maximum ({max_k})."
+                f"{Colors.RESET.value}")
+            k = max_k
 
         k_values = list(range(1, k+1))
         score = {k_i: 0.0 for k_i in k_values}
@@ -73,7 +84,6 @@ class Evaluate:
                                     correct.last_character_index),
                                 (candidate.first_character_index,
                                     candidate.last_character_index))
-                        # ic(iou)
                         if iou > 0.05:
                             found += 1
                             break

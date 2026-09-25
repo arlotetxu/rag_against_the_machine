@@ -6,8 +6,9 @@ from src.entities.data_model import (
     MinimalAnswer)
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
-from src.aux.constants import TQDM_FMT, K_FOR_ANSWER
+from src.aux.constants import TQDM_FMT, K_FOR_ANSWER, MAX_OUT_TOKENS
 import pydantic
+from pathlib import Path
 from tqdm import tqdm
 import torch
 from transformers import BatchEncoding
@@ -38,7 +39,8 @@ class Generator:
         inputs = encoded.to(self.model.device)
 
         with torch.inference_mode():
-            output = self.model.generate(**inputs, max_new_tokens=150)
+            output = self.model.generate(
+                **inputs, max_new_tokens=MAX_OUT_TOKENS)
 
         output_str = self.tokenizer.decode(
             output[0][inputs["input_ids"].shape[-1]:]
@@ -101,8 +103,8 @@ class Generator:
 
         print(
             f"{Colors.GREEN.value}"
-            f"Saved student_search_results_and_answer to "
-            f"... {output_file_path}"
+            f"Saved {Path(output_file_path).name} to "
+            f"... {Path(output_file_path).parent}"
             f"{Colors.RESET.value}")
 
     def get_batch_query_answer(
@@ -110,7 +112,6 @@ class Generator:
             student_search_results_path: str,
             output_file_path: str) -> None:
 
-        k_ = K_FOR_ANSWER
         student_answers: list[MinimalAnswer] = []
         q_counter = 0
         initial_prompt = self.prompt_builder.prompt
@@ -128,6 +129,8 @@ class Generator:
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
+        max_k = len(student_results.search_results[0].retrieved_sources)
+
         for minimal_search in tqdm(
                 student_results.search_results,
                 desc="Getting dataset answers...",
@@ -136,6 +139,7 @@ class Generator:
             chunk_count = 0
             question_ = minimal_search.question
             question_id_ = minimal_search.question_id
+            k_ = K_FOR_ANSWER if max_k >= K_FOR_ANSWER else max_k
             sources = minimal_search.retrieved_sources[0:k_]
 
             for minimal_source in sources:

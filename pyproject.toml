@@ -5,12 +5,9 @@ description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
-    "accelerate>=1.15.0",
-    "bitsandbytes>=0.50.2",
     "fire>=0.7.1",
     "flake8>=7.3.0",
     "icecream>=2.2.0",
-    "llama-cpp-python>=0.3.35",
     "mypy>=2.3.1",
     "nltk>=3.10.3",
     "numpy>=2.5.2",

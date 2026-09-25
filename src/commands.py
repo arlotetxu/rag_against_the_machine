@@ -10,7 +10,16 @@ from src.generator.generator import Generator
 # ic.configureOutput(includeContext=True)
 
 
-def index(max_chunk_size: int = 2000) -> None:
+"""
+========= PENDING TASKS ==========
+[X] Revisar posibles errores en paths de ejecucion
+[X] Revisar targets en Makefile
+[] Añadir Docstrings
+[] Añadir README.md
+"""
+
+
+def index(max_chunk_size: int = 800) -> None:
     """
     Create the index with file chunks
     Uses MinimalSource
@@ -18,7 +27,7 @@ def index(max_chunk_size: int = 2000) -> None:
     if not isinstance(max_chunk_size, int):
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.CHUNK_SIZE_NOK.value}")
-    if max_chunk_size > 2000:
+    if max_chunk_size > 2000 or max_chunk_size < 200:
         max_chunk_size = 800
         print(f"{Colors.YELLOW.value}[WARNING] - "
               f"{ErrorCodes.MAX_SIZE_CHUNK.value}"
@@ -32,7 +41,7 @@ def search(query: str, k: int = 5) -> None:
     One single query
     Uses StudentSearchResults to generate JSON
     """
-    if not isinstance(k, int):
+    if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
     if not isinstance(query, str):
@@ -43,14 +52,15 @@ def search(query: str, k: int = 5) -> None:
 
 
 def search_dataset(
-        dataset_path: str,
+        dataset_path: str =
+        "data/datasets/AnsweredQuestions/dataset_docs_public.json",
         k: int = 5,
         save_directory: str = "data/output/search_results") -> None:
     """
     Batch queries
     Uses StudentSearchResults to generate JSON
     """
-    if not isinstance(k, int):
+    if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
     if not isinstance(dataset_path, str):
@@ -64,8 +74,8 @@ def search_dataset(
     if not dataset_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}")
-    save_folder = Path(save_directory)
 
+    save_folder = Path(save_directory)
     if dataset_file.parent == save_folder:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}")
@@ -81,7 +91,7 @@ def answer(query: str, k: int = 3) -> None:
     Generate a single answer to a single query using LLM Qwen3-0.6B
     Uses StudentSearchResultsAndAnswer to generate JSON
     """
-    if not isinstance(k, int):
+    if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
     if not isinstance(query, str):
@@ -127,7 +137,7 @@ def evaluate(student_search_results_path: str,
     """
     The test function to check the results
     """
-    if not isinstance(k, int):
+    if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
     if not isinstance(dataset_path, str):
@@ -145,6 +155,9 @@ def evaluate(student_search_results_path: str,
     if not student_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.STUDENT_FILE_NOK.value}")
+    if student_file == dataset_file:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.STUDENT_DATASET_SAME.value}")
 
     evaluate = Evaluate()
     evaluate.get_recall(student_search_results_path, dataset_path, k)

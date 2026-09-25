@@ -3,8 +3,8 @@ from enum import Enum
 
 class ErrorCodes(Enum):
 
-    MAX_SIZE_CHUNK = "max_chunk_size needs to be less than 2001. " \
-        "Applying default max value: 800."
+    MAX_SIZE_CHUNK = "max_chunk_size needs to be less than 2001 and " \
+        "greater than 200. Applying default max value: 800."
 
     FILE_NOT_FOUND = " couldn't be found."
 
@@ -17,7 +17,7 @@ class ErrorCodes(Enum):
     CHUNK_SIZE_NOK = "The max_chunk_size value introduced is not a valid "\
         "integer."
 
-    K_NOK = "The K value introduce is not a valid integer."
+    K_NOK = "The K value introduce is not a valid positive integer."
 
     QUERY_NOK = "The query introduced is not a valid string."
 
@@ -31,3 +31,6 @@ class ErrorCodes(Enum):
 
     STUDENT_FILE_NOK = "The file indicated as student file is not a valid "\
         "string or does not exists."
+
+    STUDENT_DATASET_SAME = "The student file and dataset file indicated are "\
+        "the same."

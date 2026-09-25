@@ -2,7 +2,7 @@ import re
 from nltk.corpus import stopwords
 from nltk.stem.snowball import SnowballStemmer
 from nltk.downloader import download
-download('stopwords')  # type: ignore[no-untyped-call]
+download('stopwords', quiet=True)  # type: ignore[no-untyped-call]
 
 
 class Tokenizer:
