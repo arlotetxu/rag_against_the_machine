@@ -1,3 +1,4 @@
+"""Prompt construction for answer generation."""
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from src.retriever.retrieval import Retrieval
@@ -5,22 +6,51 @@ from src.retriever.retrieval import Retrieval
 # from icecream import ic
 
 
-class PromptBuid:
+class PromptBuild:
+    """Build the system prompt and the context prompt sent to the LLM.
+
+    Attributes:
+        retrieval (Retrieval): Retriever used to fetch context chunks.
+        prompt (str): System prompt that tells the model to answer only
+            from the given context and to say so when the context does not
+            contain the answer.
+        context_prompt (str): Last prompt built by
+            ``create_context_prompt``. Only set after the first call.
+    """
 
     def __init__(self) -> None:
+        """Load the retriever and set the system prompt.
 
+        Creating the ``Retrieval`` loads the BM25 index and the chunks
+        from disk, so ``index`` must have been run first.
+        """
         self.retrieval = Retrieval()
-        self.prompt = "[SYSTEM]\n" \
-            "You are the best assistant the answer question about source " \
-            "font of vLLM based UNICALLY in the given portions of context. " \
-            "If the context hasn't the answer, you MUST indicate that it " \
-            "is not possible answer the question with the available " \
-            "information. Do not use external knowledge or create new " \
-            "information.\n" \
-            "[USER]\n"
+        self.prompt = \
+            "You are an assistant that answers questions about the vLLM " \
+            "source code and documentation, using ONLY the given portions " \
+            "of context. If the context does not contain the answer, you " \
+            "MUST say that the question cannot be answered with the " \
+            "available information. Do not use external knowledge or make " \
+            "up information.\n"
 
     def create_context_prompt(self, query: str, k: int) -> str:
+        """Retrieve the top-k chunks for a query and build the user prompt.
 
+        Each chunk is read from its source file and added as
+        ``[n] (file_path)`` followed by its text. The prompt ends with the
+        question and an ``Answer:`` cue for the model to continue.
+
+        Args:
+            query (str): Question to answer.
+            k (int): Number of chunks to include as context.
+
+        Returns:
+            str: The full user prompt. It is also stored in
+                ``context_prompt``.
+
+        Raises:
+            OSError: If a chunk's source file cannot be read.
+        """
         self.context_prompt = "context: \n"
         num_chunk = 0
         query_chunks = self.retrieval.get_query_chunks(query, k)

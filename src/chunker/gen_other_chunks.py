@@ -1,3 +1,4 @@
+"""Chunker for every non-Python text file in the corpus."""
 from src.entities.data_model import IndexedChunk, MinimalSource
 from src.chunker.chunker_model import Chunk
 from src.aux.colors import Colors
@@ -8,6 +9,12 @@ from tqdm import tqdm
 
 
 class ChunkOther(Chunk):
+    """Split text files (Markdown, plain text, etc.) into overlapping chunks.
+
+    Python files are left to ``ChunkerCode``. Chunk ids have the form
+    ``id_<n>``, and the stored start/end indexes are character offsets
+    into the decoded text.
+    """
 
     def __init__(
                 self,
@@ -16,7 +23,19 @@ class ChunkOther(Chunk):
                 max_chunk_size: int = 2000,
                 overlap: int = 100,
                 ) -> None:
+        """Initialise the chunker and its chunk-id counter.
 
+        Args:
+            files_lst (dict[str, str]): Paths of the corpus files, keyed by
+                file id.
+            chunks (dict[str, IndexedChunk]): Chunks produced so far, keyed
+                by chunk id. New chunks are added to it in place.
+            max_chunk_size (int, optional): Maximum number of characters per
+                chunk. Defaults to 2000.
+            overlap (int, optional): Number of characters shared by
+                consecutive chunks of the same file. Capped at half of
+                ``max_chunk_size``. Defaults to 100.
+        """
         self.chunk_id = 0
         self.prefix = "id_"
         super().__init__(files_lst, chunks, max_chunk_size)
@@ -24,7 +43,24 @@ class ChunkOther(Chunk):
         self.overlap = min(overlap, self.max_chunk // 2)
 
     def chunk_others(self) -> dict[str, IndexedChunk]:
+        """Chunk every text file in ``files_lst`` that is not Python code.
 
+        Files with a binary extension (images, archives, libraries, PDFs),
+        ``.py`` files and ``.DS_Store`` are ignored. Files that are not
+        valid UTF-8 are skipped with a warning.
+
+        Each chunk ends at the last line break before ``max_chunk``
+        characters, as long as that line break comes after the overlap
+        zone; otherwise it ends exactly at the limit. The next chunk starts
+        ``overlap`` characters before the previous one ended.
+
+        Returns:
+            dict[str, IndexedChunk]: The ``chunks`` dictionary, now also
+                holding the chunks of the text files.
+
+        Raises:
+            OSError: If a file does not exist or cannot be read
+        """
         bin_extensions = {
             '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',
             '.pdf', '.zip', '.tar', '.gz', '.whl', '.so', '.dylib', '.dll',
@@ -73,15 +109,10 @@ class ChunkOther(Chunk):
                         break
                     start = end - self.overlap
 
-            except FileNotFoundError as e:
+            except OSError as e:
                 raise FileNotFoundError(
-                    f"{Colors.YELLOW.value}[WARNING] -  "
-                    f"The file {path}{ErrorCodes.FILE_NOT_FOUND.value}"
-                    f"{Colors.RESET.value}") from e
-            except PermissionError as e:
-                raise PermissionError(
-                    f"{Colors.YELLOW.value}[WARNING] -  "
-                    f"The file {path}{ErrorCodes.PERMISSION.value}"
+                    f"{Colors.RED.value}[ERROR] -  "
+                    f"The file {path}{ErrorCodes.OS_ERROR.value}"
                     f"{Colors.RESET.value}") from e
 
         return self.chunks

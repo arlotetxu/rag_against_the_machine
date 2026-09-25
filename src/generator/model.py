@@ -1,3 +1,11 @@
+"""Loading of the LLM used for answer generation.
+
+Attributes:
+    MODEL_NAME (str): Hugging Face id of the model in use.
+    MODEL_NAME2 (str): Alternative model tried during development.
+    MODEL_NAME3 (str): Alternative model tried during development.
+    MODEL_NAME4 (str): Alternative model tried during development.
+"""
 from transformers import AutoTokenizer, AutoModelForCausalLM
 import torch
 
@@ -8,8 +16,23 @@ MODEL_NAME4 = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
 
 class Model:
+    """Tokenizer and causal language model, loaded on the best device.
+
+    Attributes:
+        tokenizer: Tokenizer of ``MODEL_NAME``. If it has no pad token, the
+            end-of-sequence token is used instead.
+        device (str): ``"mps"``, ``"cuda"`` or ``"cpu"``, in that order of
+            preference.
+        model: ``MODEL_NAME`` loaded on ``device``, in float16 on a GPU and
+            float32 on the CPU.
+    """
 
     def __init__(self) -> None:
+        """Load the tokenizer and the model and move the model to a device.
+
+        The model is downloaded from the Hugging Face Hub on first use and
+        read from the local cache afterwards.
+        """
         my_model = MODEL_NAME
         self.tokenizer = AutoTokenizer.from_pretrained(
             my_model,

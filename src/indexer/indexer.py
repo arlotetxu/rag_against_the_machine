@@ -1,3 +1,4 @@
+"""Corpus ingestion: chunking, tokenization and BM25 index building."""
 import os
 from pathlib import Path
 from tqdm import tqdm
@@ -13,22 +14,35 @@ from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
 
-# from src.retrieval.retrieval import Retrieval
-# from src.evaluate.evaluate import Evaluate
 # from icecream import ic
 
 
 class Indexer:
+    """Build the BM25 index and the chunks file from the raw corpus."""
 
     def __init__(
             self, max_chunk_size: int = 800, min_chunk_tokens: int = 10
             ) -> None:
+        """Set the chunking limits.
+
+        Args:
+            max_chunk_size (int, optional): Maximum chunk size passed to the
+                chunkers. Values above 800 are capped at 800. Defaults to
+                800.
+            min_chunk_tokens (int, optional): Chunks with fewer tokens than
+                this are dropped from the index. Defaults to 10.
+        """
         self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}
 
     def get_input_files(self) -> None:
+        """Collect every file under the corpus folder into ``files_lst``.
+
+        Subfolders are walked recursively. Files get the ids ``id0``,
+        ``id1``... in the order they are found.
+        """
         path = PathsAndNames.corpus_path.value
         index = 0
         for root, dirs, files in os.walk(path):
@@ -39,10 +53,19 @@ class Indexer:
               f"Documents read: {len(self.files_lst)}"
               f"{Colors.RESET.value}")
 
-    def get_extension(self, doc_path: str) -> str:
-        return (Path(doc_path).suffix)
-
     def tokenize_chunks(self) -> list[list[str]]:
+        """Turn each chunk into the list of terms that BM25 will index.
+
+        Python chunks use the code tokenizer and the rest use the text
+        tokenizer. Chunks with fewer than ``min_chunk_tokens`` tokens are
+        removed from ``chunks``. The kept chunks also get the tokens of
+        their file path, so a query can match on file and folder names.
+        Stopwords are then removed and the tokens stemmed.
+
+        Returns:
+            list[list[str]]: The terms of each kept chunk, in the same order
+                as ``chunks``.
+        """
         corpus_tokens: list[list[str]] = []
         discarded: list[str] = []
         tokenizer = Tokenizer()
@@ -71,29 +94,35 @@ class Indexer:
         return corpus_tokens
 
     def bm25_index(self) -> BM25Okapi:
-        """
-        0.9, 1.2, 1.5, 1.8,
-        , 0.5, 0.75, 0.9
+        """Tokenize the chunks and build the BM25 index over them.
+
+        Uses ``k1=2.0`` and ``b=0.3`` (a low ``b`` penalises long chunks
+        only slightly). Chunks dropped during tokenization are also
+        removed from ``chunks``, so it stays aligned with the index.
+
+        Returns:
+            BM25Okapi: The index, with one document per kept chunk.
         """
         corpus_tokens = self.tokenize_chunks()
-        # for k1 in (1.9, 2.0, 2.1, 2.2):
-        #     bm25_index = BM25Okapi(
-        #         corpus_tokens, k1=k1, b=0.3)  # type: ignore[no-untyped-call]
-        #     self.save_index_chunks(bm25_index)
-        #     ic(k1)
-        #     Retrieval().get_batch_query_chunks(
-        #         "data/datasets/private/AnsweredQuestions/dataset_docs_private.json",
-        #         10,
-        #         "data/output/AnsweredQuestions/dataset_docs_private.json")
-        #     Evaluate().get_recall(
-        #         "data/output/AnsweredQuestions/dataset_docs_private.json",
-        #         "data/datasets/private/AnsweredQuestions/dataset_docs_private.json",
-        #         10)
         bm25_index = BM25Okapi(
             corpus_tokens, k1=2.0, b=0.3)  # type: ignore[no-untyped-call]
         return bm25_index
 
     def save_index_chunks(self, bm25_index: BM25Okapi) -> None:
+        """Save the BM25 index as a pickle and the chunks as JSON.
+
+        Both files go to the folders set in ``PathsAndNames`` and
+        overwrite any previous version. The index folder is created if
+        needed. The chunks folder is the same one by default, so it exists
+        by then.
+
+        Args:
+            bm25_index (BM25Okapi): Index built by ``bm25_index``.
+
+        Raises:
+            PermissionError: If either file cannot be written.
+            ValueError: If the chunks do not match ``RagIndex``.
+        """
         file_2_save = PathsAndNames.index_name.value
         path_2_save = Path(PathsAndNames.save_index_path.value)
 
@@ -113,7 +142,7 @@ class Indexer:
         path = PathsAndNames.save_chunks.value
         try:
             chunk_list = list(self.chunks.values())
-            with open(path + file_2_save, mode='w', encoding='utf') as fd:
+            with open(path + file_2_save, mode='w', encoding='utf-8') as fd:
                 fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
         except PermissionError as e:
             raise PermissionError(
@@ -129,6 +158,13 @@ class Indexer:
               f"{Colors.RESET.value}")
 
     def run(self) -> None:
+        """Run the whole ingestion: read, chunk, index and save.
+
+        Raises:
+            Exception: If a corpus file is missing or a file cannot be read
+                or written. The original ``FileNotFoundError`` or
+                ``PermissionError`` is turned into a plain ``Exception``.
+        """
         try:
             self.get_input_files()
             self.chunks = ChunkerCode(
@@ -143,5 +179,8 @@ class Indexer:
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
 
-        except (FileNotFoundError, PermissionError) as e:
-            raise Exception(e)
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"Any file from corpus {ErrorCodes.OS_ERROR.value}."
+                f"{Colors.RESET.value}") from e

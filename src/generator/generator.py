@@ -1,4 +1,5 @@
-from src.generator.prompt import PromptBuid
+"""Answer generation with the LLM from retrieved context."""
+from src.generator.prompt import PromptBuild
 from src.generator.model import Model
 from src.entities.data_model import (
     StudentSearchResults,
@@ -16,15 +17,39 @@ from transformers import BatchEncoding
 
 
 class Generator:
-    def __init__(self) -> None:
+    """Answer questions with the LLM, using retrieved chunks as context."""
 
-        self.prompt_builder = PromptBuid()
+    def __init__(self) -> None:
+        """Load the retriever, the prompt builder and the LLM.
+
+        This loads the BM25 index and the chunks from disk and the model
+        from the Hugging Face cache (downloading it on first use), so it
+        can take a while.
+        """
+        self.prompt_builder = PromptBuild()
         model_inst = Model()
         self.model = model_inst.model
         self.tokenizer = model_inst.tokenizer
 
     def model_launch(self, messages: list[dict[str, str]]) -> str:
+        """Run the LLM on a chat conversation and return its reply.
 
+        The messages are formatted with the model's chat template, with
+        Qwen3's thinking mode turned off. Generation stops after
+        ``MAX_OUT_TOKENS`` new tokens. Only the new tokens are decoded, and
+        the text is cut at the last ``<|im_end|>`` marker if there is one.
+
+        Args:
+            messages (list[dict[str, str]]): Chat messages, each with a
+                ``"role"`` (``"system"`` or ``"user"``) and a ``"content"``.
+
+        Returns:
+            str: The model's reply.
+
+        Raises:
+            TypeError: If the tokenizer returns an unexpected type when
+                encoding the prompt or decoding the output.
+        """
         encoded = self.tokenizer.apply_chat_template(
             messages,
             add_generation_prompt=True,
@@ -43,22 +68,34 @@ class Generator:
                 **inputs, max_new_tokens=MAX_OUT_TOKENS)
 
         output_str = self.tokenizer.decode(
-            output[0][inputs["input_ids"].shape[-1]:]
+            output[0][inputs["input_ids"].shape[-1]:],
+            skip_special_tokens=True
             )
         if not isinstance(output_str, str):
             raise TypeError(
                 f"Expected str, got {type(output_str).__name__}")
 
-        to_cut = output_str.rfind('<|im_end|>')
-        if to_cut == -1:
-            return output_str
-        return output_str[0:to_cut]
+        return output_str
 
     def get_single_answer(
             self, query: str,
             k: int = 3,
             print_: bool = False) -> None:
+        """Answer one question using its top-k retrieved chunks.
 
+        The answer is not returned or saved; it is only printed, and only
+        when ``print_`` is true.
+
+        Args:
+            query (str): Question to answer.
+            k (int, optional): Number of chunks used as context. Defaults
+                to 3.
+            print_ (bool, optional): Whether to print the answer. Defaults
+                to False.
+
+        Raises:
+            OSError: If a chunk's source file cannot be read.
+        """
         initial_prompt = self.prompt_builder.prompt
         context_prompt = self.prompt_builder.create_context_prompt(
                     query=query,
@@ -74,7 +111,19 @@ class Generator:
             print(output)
 
     def get_chunk(self, path_: str, from_: int, to_: int) -> str:
+        """Return the text of a file between two offsets.
 
+        Args:
+            path_ (str): Path of the file.
+            from_ (int): Start offset (inclusive).
+            to_ (int): End offset (exclusive).
+
+        Returns:
+            str: ``file_content[from_:to_]``.
+
+        Raises:
+            OSError: If the file cannot be read.
+        """
         try:
             with open(path_, mode='r') as fd:
                 chunk = fd.read()[from_:to_]
@@ -89,7 +138,15 @@ class Generator:
             to_save: StudentSearchResultsAndAnswer,
             output_file_path: str
             ) -> None:
+        """Write the answers to a JSON file, overwriting it if it exists.
 
+        Args:
+            to_save (StudentSearchResultsAndAnswer): Answers to save.
+            output_file_path (str): Path of the output file.
+
+        Raises:
+            OSError: If the file cannot be written.
+        """
         try:
             with open(output_file_path, mode='w') as fd:
                 fd.write(to_save.model_dump_json(indent=2))
@@ -98,8 +155,6 @@ class Generator:
                 f"{Colors.RED.value}[ERROR] - "
                 f"The file '{output_file_path}'{ErrorCodes.OS_ERROR.value}") \
                     from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
 
         print(
             f"{Colors.GREEN.value}"
@@ -111,7 +166,23 @@ class Generator:
             self,
             student_search_results_path: str,
             output_file_path: str) -> None:
+        """Answer every question in a search-results file and save them.
 
+        Each question gets its own first ``K_FOR_ANSWER`` retrieved chunks
+        as context (or all of them, if fewer were retrieved). No new
+        retrieval is done. The answers are saved as a
+        ``StudentSearchResultsAndAnswer`` JSON file.
+
+        Args:
+            student_search_results_path (str): Path to a
+                ``StudentSearchResults`` JSON file.
+            output_file_path (str): Path of the answers file to write.
+
+        Raises:
+            OSError: If a file cannot be read or written.
+            ValueError: If the input file does not match
+                ``StudentSearchResults``.
+        """
         student_answers: list[MinimalAnswer] = []
         q_counter = 0
         initial_prompt = self.prompt_builder.prompt

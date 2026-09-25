@@ -1,3 +1,11 @@
+"""Command-line entry point for the RAG pipeline.
+
+Exposes the indexing, retrieval, generation and evaluation commands through
+Python Fire. Run it as a module, e.g. ``python -m src index``.
+
+Any uncaught exception is reported in red with its type, message and the
+file and line where it was raised, and the process exits with status 1.
+"""
 import sys
 import traceback
 
@@ -15,6 +23,12 @@ from src.commands import (
 
 
 def main() -> None:
+    """Dispatch the CLI subcommand given in ``sys.argv`` via Python Fire.
+
+    Available subcommands: ``index``, ``search``, ``search_dataset``,
+    ``answer``, ``answer_dataset`` and ``evaluate``. Fire turns their
+    keyword arguments into command-line flags (e.g. ``--k 5``).
+    """
     fire.Fire({
         'index': index,
         'search': search,

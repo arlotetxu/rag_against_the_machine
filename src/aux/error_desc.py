@@ -1,7 +1,22 @@
+"""User-facing error and warning messages."""
 from enum import Enum
 
 
 class ErrorCodes(Enum):
+    """Message texts shown when a command fails or adjusts its input.
+
+    Callers add the colour codes and the ``[ERROR]``/``[WARNING]`` prefix.
+    The messages come in two forms:
+
+    - Complete sentences, shown on their own (e.g. ``K_NOK``,
+      ``QUERY_NOK``).
+    - Fragments starting with a space (``FILE_NOT_FOUND``, ``PERMISSION``,
+      ``OS_ERROR``), which are appended right after the offending file
+      path, e.g. ``f"The file '{path}'{ErrorCodes.OS_ERROR.value}"``.
+
+    ``MAX_SIZE_CHUNK`` is a warning rather than an error: the index is
+    still built, with the default chunk size.
+    """
 
     MAX_SIZE_CHUNK = "max_chunk_size needs to be less than 2001 and " \
         "greater than 200. Applying default max value: 800."
