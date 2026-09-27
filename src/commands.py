@@ -63,7 +63,7 @@ def search(query: str, k: int = 5) -> None:
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
-    if not isinstance(query, str):
+    if not isinstance(query, str) or len(query) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.QUERY_NOK.value}")
     retrieval = Retrieval()
@@ -98,10 +98,10 @@ def search_dataset(
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
-    if not isinstance(dataset_path, str):
+    if not isinstance(dataset_path, str) or len(dataset_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}")
-    if not isinstance(save_directory, str):
+    if not isinstance(save_directory, str) or len(save_directory) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}")
 
@@ -137,7 +137,7 @@ def answer(query: str, k: int = 3) -> None:
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
-    if not isinstance(query, str):
+    if not isinstance(query, str) or len(query) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.QUERY_NOK.value}")
     generator = Generator()
@@ -164,10 +164,12 @@ def answer_dataset(student_search_results_path: str,
             exist, or ``save_directory`` is the input file's own folder
             (the input would be overwritten).
     """
-    if not isinstance(student_search_results_path, str):
+    if not isinstance(student_search_results_path, str) or \
+            len(student_search_results_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.STUDENT_FILE_NOK.value}")
-    if not isinstance(save_directory, str):
+    if not isinstance(save_directory, str) or \
+            len(save_directory) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}")
 
@@ -212,10 +214,11 @@ def evaluate(student_search_results_path: str,
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
-    if not isinstance(dataset_path, str):
+    if not isinstance(dataset_path, str) or len(dataset_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}")
-    if not isinstance(student_search_results_path, str):
+    if not isinstance(student_search_results_path, str) or \
+            len(student_search_results_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.STUDENT_FILE_NOK.value}")
 

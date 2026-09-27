@@ -118,7 +118,7 @@ moulinette: install index search_dataset
 
 debug: install
 	@echo "$(YELLOW)Entering debugging mode...$(DEF_COLOR)"
-	uv run python3 -m pdb -c continue $(MAIN_FILE) config.json
+	uv run python3 -m pdb -c continue -m src commands
 
 clean:
 	@echo "$(YELLOW)\nRemoving __pycache__ directories...$(DEF_COLOR)"
@@ -164,12 +164,12 @@ pre-commit-install:
 sync:
 	uv sync
 
-test:
-	@echo "$(YELLOW)\nRunning unit tests...$(DEF_COLOR)"
-	@uv run pytest tests/ -v
-	@echo "$(GREEN)Tests completed!!$(DEF_COLOR)"
+# test:
+# 	@echo "$(YELLOW)\nRunning unit tests...$(DEF_COLOR)"
+# 	@uv run pytest tests/ -v
+# 	@echo "$(GREEN)Tests completed!!$(DEF_COLOR)"
 
-build:
-	uv run pyinstaller --onefile --noconsole --add-data "src/storage/assets/:assets"  --add-data "config.json:." pac-man.py
+# build:
+# 	uv run pyinstaller --onefile --noconsole --add-data "src/storage/assets/:assets"  --add-data "config.json:." pac-man.py
 
-.PHONY: all run clean lint lint-strict pre-commit-install sync test build
+.PHONY: all run clean lint lint-strict pre-commit-install sync
