@@ -13,6 +13,10 @@ import pickle
 from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
+from sentence_transformers import SentenceTransformer
+
+from transformers import AutoTokenizer
+
 
 # from icecream import ic
 
@@ -157,6 +161,26 @@ class Indexer:
               f"Indexed {len(self.chunks)} chunks under {path}"
               f"{Colors.RESET.value}")
 
+    def get_dataset_embeddings(self) -> None:
+        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+        tokenizer = AutoTokenizer.from_pretrained(
+            "sentence-transformers/all-MiniLM-L6-v2")
+
+        text_chunks = [meta.text for meta in self.chunks.values()]
+        encoded = tokenizer(text_chunks, verbose=False)
+        lengths = [len(ids) for ids in encoded["input_ids"]]
+
+        over_max_tokens = sum(1 for length in lengths if length > 256)
+
+        # for chunk in text_chunks:
+        #     if len(tokenizer(chunk)["input_ids"]) > 256:
+        #         over_max_tokens +=1
+
+        print("Generating embeddings...")
+        chunks_matrix = model.encode(text_chunks, normalize_embeddings=True)
+        print(chunks_matrix.shape)
+        print(f"Chunks over 256 tokens: {over_max_tokens}")
+
     def run(self) -> None:
         """Run the whole ingestion: read, chunk, index and save.
 
@@ -178,6 +202,7 @@ class Indexer:
             ).chunk_others()
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
+            self.get_dataset_embeddings()
 
         except OSError as e:
             raise OSError(
