@@ -13,12 +13,11 @@ import pickle
 from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
-from sentence_transformers import SentenceTransformer
+import torch
+from transformers import AutoTokenizer, AutoModel
 
-from transformers import AutoTokenizer
 
-
-# from icecream import ic
+from icecream import ic
 
 
 class Indexer:
@@ -161,25 +160,37 @@ class Indexer:
               f"Indexed {len(self.chunks)} chunks under {path}"
               f"{Colors.RESET.value}")
 
-    def get_dataset_embeddings(self) -> None:
-        model = SentenceTransformer("sentence-transformers/all-MiniLM-L6-v2")
+    def get_chunks_embeddings(self) -> None:
+        model = AutoModel.from_pretrained(
+            "sentence-transformers/all-MiniLM-L6-v2")
         tokenizer = AutoTokenizer.from_pretrained(
             "sentence-transformers/all-MiniLM-L6-v2")
 
         text_chunks = [meta.text for meta in self.chunks.values()]
-        encoded = tokenizer(text_chunks, verbose=False)
-        lengths = [len(ids) for ids in encoded["input_ids"]]
+        encoded = tokenizer(
+            text_chunks,
+            max_length=256,                    # en tu caso real: 256
+            truncation=True,
+            stride=2,                         # tokens de solape entre ventanas
+            return_overflowing_tokens=True,   # no descartar lo que sobra:
+            padding=True,
+            return_tensors="pt")
 
-        over_max_tokens = sum(1 for length in lengths if length > 256)
-
-        # for chunk in text_chunks:
-        #     if len(tokenizer(chunk)["input_ids"]) > 256:
-        #         over_max_tokens +=1
-
+        # lengths = [len(ids) for ids in encoded["input_ids"]]
+        # too_long = sum(1 for length in lengths if length > 256)
+        # print(f"Chunks totales:       {len(lengths)}")
+        # print(f"Superan 256 tokens: {too_long} "
+        # f"({too_long / len(lengths):.1%})")
+        # print(f"Longitud máxima:      {max(lengths)}")
+        ic(encoded)
+        window_to_chunk = encoded.pop("overflow_to_sample_mapping")
+        ic(window_to_chunk)
         print("Generating embeddings...")
-        chunks_matrix = model.encode(text_chunks, normalize_embeddings=True)
-        print(chunks_matrix.shape)
-        print(f"Chunks over 256 tokens: {over_max_tokens}")
+        with torch.no_grad():
+            model_output = model(**encoded).to("mps")
+        ic(model_output)
+        # chunks_matrix = model.encode(text_chunks, normalize_embeddings=True)
+        # print(chunks_matrix.shape)
 
     def run(self) -> None:
         """Run the whole ingestion: read, chunk, index and save.
@@ -202,7 +213,7 @@ class Indexer:
             ).chunk_others()
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
-            self.get_dataset_embeddings()
+            self.get_chunks_embeddings()
 
         except OSError as e:
             raise OSError(
