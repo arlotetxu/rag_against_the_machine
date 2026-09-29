@@ -35,6 +35,8 @@ class PathsAndNames(Enum):
     index_name = "bm25_index.pkl"
     save_chunks = "data/processed"
     chunks_json = "/chunks.json"
+    embeddings_name = "embeddings.npy"
+    embeddings_info_name = "embeddings_info.json"
 
 
 MIN_RATIO = 0.3

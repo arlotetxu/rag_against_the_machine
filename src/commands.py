@@ -19,7 +19,7 @@ from src.generator.generator import Generator
 """
 
 
-def index(max_chunk_size: int = 800) -> None:
+def index(max_chunk_size: int = 800, get_embeddings: bool = False) -> None:
     """Chunk the corpus and build the BM25 index on disk.
 
     Python files are split with the code chunker and every other file with
@@ -31,6 +31,9 @@ def index(max_chunk_size: int = 800) -> None:
             chunk. Values outside ``[200, 2000]`` are reset to 800 with a
             warning, and ``Indexer`` caps any value above 800 at 800.
             Defaults to 800.
+        get_embeddings (bool, optional): Whether to also compute dense
+            embeddings for the chunks with all-MiniLM-L6-v2. Defaults to
+            False.
 
     Raises:
         ValueError: If ``max_chunk_size`` is not an integer.
@@ -38,12 +41,15 @@ def index(max_chunk_size: int = 800) -> None:
     if not isinstance(max_chunk_size, int):
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.CHUNK_SIZE_NOK.value}")
+    if not isinstance(get_embeddings, bool):
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.EMBEDDINGS_NOK.value}")
     if max_chunk_size > 2000 or max_chunk_size < 200:
         max_chunk_size = 800
         print(f"{Colors.YELLOW.value}[WARNING] - "
               f"{ErrorCodes.MAX_SIZE_CHUNK.value}"
               f"{Colors.RESET.value}")
-    indexer = Indexer(max_chunk_size)
+    indexer = Indexer(max_chunk_size, get_embeddings=get_embeddings)
     indexer.run()
 
 

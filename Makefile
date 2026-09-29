@@ -72,7 +72,8 @@ index: install
 	@echo "$(GRAY)$$HEADER$(DEF_COLOR)"
 	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
 	@read -p "Enter chunk size: " CHUNK_SIZE;\
-	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE"
+	read -p "Embbedings? (True/False): " EMBEDDINGS;\
+	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE" --get_embeddings "$$EMBEDDINGS"
 
 search: index
 	@echo "$(MAGENTA)SEARCH A SINGLE QUERY...$(DEF_COLOR)"

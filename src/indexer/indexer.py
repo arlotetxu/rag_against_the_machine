@@ -13,20 +13,22 @@ import pickle
 from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
-import torch
-from transformers import AutoTokenizer, AutoModel
+# import torch
+# from transformers import AutoTokenizer, AutoModel
+from src.indexer.embeddings import Embeddings
 
 
-from icecream import ic
+# from icecream import ic
 
 
 class Indexer:
     """Build the BM25 index and the chunks file from the raw corpus."""
 
     def __init__(
-            self, max_chunk_size: int = 800, min_chunk_tokens: int = 10
-            ) -> None:
-        """Set the chunking limits.
+            self, max_chunk_size: int = 800,
+            min_chunk_tokens: int = 10,
+            get_embeddings: bool = False) -> None:
+        """Set the chunking limits and the embedding option.
 
         Args:
             max_chunk_size (int, optional): Maximum chunk size passed to the
@@ -34,11 +36,15 @@ class Indexer:
                 800.
             min_chunk_tokens (int, optional): Chunks with fewer tokens than
                 this are dropped from the index. Defaults to 10.
+            get_embeddings (bool, optional): Whether to also compute dense
+                embeddings for the chunks with all-MiniLM-L6-v2. Defaults to
+                False.
         """
         self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}
+        self.gen_embeddings = get_embeddings
 
     def get_input_files(self) -> None:
         """Collect every file under the corpus folder into ``files_lst``.
@@ -157,40 +163,8 @@ class Indexer:
             raise ValueError(e)
         print(f"{Colors.GREEN.value}"
               f"Corpus ingestion complete! "
-              f"Indexed {len(self.chunks)} chunks under {path}"
+              f"Indexed {len(self.chunks)} chunks under {path + file_2_save}"
               f"{Colors.RESET.value}")
-
-    def get_chunks_embeddings(self) -> None:
-        model = AutoModel.from_pretrained(
-            "sentence-transformers/all-MiniLM-L6-v2")
-        tokenizer = AutoTokenizer.from_pretrained(
-            "sentence-transformers/all-MiniLM-L6-v2")
-
-        text_chunks = [meta.text for meta in self.chunks.values()]
-        encoded = tokenizer(
-            text_chunks,
-            max_length=256,                    # en tu caso real: 256
-            truncation=True,
-            stride=2,                         # tokens de solape entre ventanas
-            return_overflowing_tokens=True,   # no descartar lo que sobra:
-            padding=True,
-            return_tensors="pt")
-
-        # lengths = [len(ids) for ids in encoded["input_ids"]]
-        # too_long = sum(1 for length in lengths if length > 256)
-        # print(f"Chunks totales:       {len(lengths)}")
-        # print(f"Superan 256 tokens: {too_long} "
-        # f"({too_long / len(lengths):.1%})")
-        # print(f"Longitud máxima:      {max(lengths)}")
-        ic(encoded)
-        window_to_chunk = encoded.pop("overflow_to_sample_mapping")
-        ic(window_to_chunk)
-        print("Generating embeddings...")
-        with torch.no_grad():
-            model_output = model(**encoded).to("mps")
-        ic(model_output)
-        # chunks_matrix = model.encode(text_chunks, normalize_embeddings=True)
-        # print(chunks_matrix.shape)
 
     def run(self) -> None:
         """Run the whole ingestion: read, chunk, index and save.
@@ -213,7 +187,11 @@ class Indexer:
             ).chunk_others()
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
-            self.get_chunks_embeddings()
+            if self.gen_embeddings:
+                embedder = Embeddings()
+                matrix = embedder.encode(
+                    [c.text for c in self.chunks.values()])
+                embedder.save_index_embeddings(matrix)
 
         except OSError as e:
             raise OSError(
