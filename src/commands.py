@@ -10,16 +10,7 @@ from src.generator.generator import Generator
 # ic.configureOutput(includeContext=True)
 
 
-"""
-========= PENDING TASKS ==========
-[X] Revisar posibles errores en paths de ejecucion
-[X] Revisar targets en Makefile
-[] Añadir Docstrings
-[] Añadir README.md
-"""
-
-
-def index(max_chunk_size: int = 800, get_embeddings: bool = False) -> None:
+def index(max_chunk_size: int = 800, bonus: str = 'n') -> None:
     """Chunk the corpus and build the BM25 index on disk.
 
     Python files are split with the code chunker and every other file with
@@ -31,6 +22,8 @@ def index(max_chunk_size: int = 800, get_embeddings: bool = False) -> None:
             chunk. Values outside ``[200, 2000]`` are reset to 800 with a
             warning, and ``Indexer`` caps any value above 800 at 800.
             Defaults to 800.
+        bonus (str, optional): Whether to include bonus content in the index.
+            Defaults to 'n'.
         get_embeddings (bool, optional): Whether to also compute dense
             embeddings for the chunks with all-MiniLM-L6-v2. Defaults to
             False.
@@ -40,20 +33,22 @@ def index(max_chunk_size: int = 800, get_embeddings: bool = False) -> None:
     """
     if not isinstance(max_chunk_size, int):
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.CHUNK_SIZE_NOK.value}")
-    if not isinstance(get_embeddings, bool):
+                         f"{ErrorCodes.CHUNK_SIZE_NOK.value}"
+                         f"{Colors.RESET.value}")
+    if not bonus.lower() in ['y', 'n']:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.EMBEDDINGS_NOK.value}")
+                         f"{ErrorCodes.BONUS_NOK.value}"
+                         f"{Colors.RESET.value}")
     if max_chunk_size > 2000 or max_chunk_size < 200:
         max_chunk_size = 800
         print(f"{Colors.YELLOW.value}[WARNING] - "
               f"{ErrorCodes.MAX_SIZE_CHUNK.value}"
               f"{Colors.RESET.value}")
-    indexer = Indexer(max_chunk_size, get_embeddings=get_embeddings)
+    indexer = Indexer(max_chunk_size, bonus=bonus.lower() == 'y')
     indexer.run()
 
 
-def search(query: str, k: int = 5) -> None:
+def search(query: str, k: int = 5, bonus: str = 'n') -> None:
     """Retrieve the top-k chunks for a single query and print them.
 
     Each result is printed as ``file_path [first_char:last_char]``.
@@ -68,19 +63,27 @@ def search(query: str, k: int = 5) -> None:
     """
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.K_NOK.value}")
+                         f"{ErrorCodes.K_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(query, str) or len(query) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.QUERY_NOK.value}")
-    retrieval = Retrieval()
-    retrieval.get_query_chunks(query=query, k=k, print_=True)
+                         f"{ErrorCodes.QUERY_NOK.value}"
+                         f"{Colors.RESET.value}")
+    if not bonus.lower() in ['y', 'n']:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.BONUS_NOK.value}"
+                         f"{Colors.RESET.value}")
+    retrieval = Retrieval(bonus=bonus.lower() == 'y')
+    retrieval.get_query_chunks(
+        query=query, k=k, print_=True)
 
 
 def search_dataset(
         dataset_path: str =
         "data/datasets/AnsweredQuestions/dataset_docs_public.json",
         k: int = 5,
-        save_directory: str = "data/output/search_results") -> None:
+        save_directory: str = "data/output/search_results",
+        bonus: str = 'n') -> None:
     """Retrieve the top-k chunks for every question in a dataset.
 
     The results are written as a ``StudentSearchResults`` JSON file named
@@ -106,24 +109,32 @@ def search_dataset(
                          f"{ErrorCodes.K_NOK.value}")
     if not isinstance(dataset_path, str) or len(dataset_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.DATASET_PATH_NOK.value}")
+                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(save_directory, str) or len(save_directory) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_NOK.value}")
+                         f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
+                         f"{Colors.RESET.value}")
+    if not bonus.lower() in ['y', 'n']:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.BONUS_NOK.value}"
+                         f"{Colors.RESET.value}")
 
     dataset_file = Path(dataset_path)
     if not dataset_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.DATASET_PATH_NOK.value}")
+                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
+                         f"{Colors.RESET.value}")
 
     save_folder = Path(save_directory)
     if dataset_file.parent == save_folder:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}")
+                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}"
+                         f"{Colors.RESET.value}")
     save_folder.mkdir(parents=True, exist_ok=True)
     output_path = save_folder / dataset_file.name
 
-    retrieval = Retrieval()
+    retrieval = Retrieval(bonus=bonus.lower() == 'y')
     retrieval.get_batch_query_chunks(dataset_path, k, str(output_path))
 
 
@@ -142,10 +153,12 @@ def answer(query: str, k: int = 3) -> None:
     """
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.K_NOK.value}")
+                         f"{ErrorCodes.K_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(query, str) or len(query) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.QUERY_NOK.value}")
+                         f"{ErrorCodes.QUERY_NOK.value}"
+                         f"{Colors.RESET.value}")
     generator = Generator()
     generator.get_single_answer(query, k, print_=True)
 
@@ -173,21 +186,25 @@ def answer_dataset(student_search_results_path: str,
     if not isinstance(student_search_results_path, str) or \
             len(student_search_results_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_FILE_NOK.value}")
+                         f"{ErrorCodes.STUDENT_FILE_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(save_directory, str) or \
             len(save_directory) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_NOK.value}")
+                         f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
+                         f"{Colors.RESET.value}")
 
     student_file = Path(student_search_results_path)
     if not student_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_FILE_NOK.value}")
+                         f"{ErrorCodes.STUDENT_FILE_NOK.value}"
+                         f"{Colors.RESET.value}")
     save_folder = Path(save_directory)
 
     if student_file.parent == save_folder:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}")
+                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}"
+                         f"{Colors.RESET.value}")
     save_folder.mkdir(parents=True, exist_ok=True)
     output_path = save_folder / student_file.name
 
@@ -219,26 +236,32 @@ def evaluate(student_search_results_path: str,
     """
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.K_NOK.value}")
+                         f"{ErrorCodes.K_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(dataset_path, str) or len(dataset_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.DATASET_PATH_NOK.value}")
+                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
+                         f"{Colors.RESET.value}")
     if not isinstance(student_search_results_path, str) or \
             len(student_search_results_path) == 0:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_FILE_NOK.value}")
+                         f"{ErrorCodes.STUDENT_FILE_NOK.value}"
+                         f"{Colors.RESET.value}")
 
     dataset_file = Path(dataset_path)
     if not dataset_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.DATASET_PATH_NOK.value}")
+                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
+                         f"{Colors.RESET.value}")
     student_file = Path(student_search_results_path)
     if not student_file.exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_FILE_NOK.value}")
+                         f"{ErrorCodes.STUDENT_FILE_NOK.value}"
+                         f"{Colors.RESET.value}")
     if student_file == dataset_file:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_DATASET_SAME.value}")
+                         f"{ErrorCodes.STUDENT_DATASET_SAME.value}"
+                         f"{Colors.RESET.value}")
 
     evaluate = Evaluate()
     evaluate.get_recall(student_search_results_path, dataset_path, k)

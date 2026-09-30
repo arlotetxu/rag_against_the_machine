@@ -13,10 +13,7 @@ import pickle
 from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
-# import torch
-# from transformers import AutoTokenizer, AutoModel
 from src.indexer.embeddings import Embeddings
-
 
 # from icecream import ic
 
@@ -27,7 +24,7 @@ class Indexer:
     def __init__(
             self, max_chunk_size: int = 800,
             min_chunk_tokens: int = 10,
-            get_embeddings: bool = False) -> None:
+            bonus: bool = False) -> None:
         """Set the chunking limits and the embedding option.
 
         Args:
@@ -36,15 +33,14 @@ class Indexer:
                 800.
             min_chunk_tokens (int, optional): Chunks with fewer tokens than
                 this are dropped from the index. Defaults to 10.
-            get_embeddings (bool, optional): Whether to also compute dense
-                embeddings for the chunks with all-MiniLM-L6-v2. Defaults to
-                False.
+            bonus (str, optional): Whether to include bonus content in the
+                index. Defaults to 'n'.
         """
         self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}
-        self.gen_embeddings = get_embeddings
+        self.bonus = bonus
 
     def get_input_files(self) -> None:
         """Collect every file under the corpus folder into ``files_lst``.
@@ -187,10 +183,10 @@ class Indexer:
             ).chunk_others()
             bm25_index = self.bm25_index()
             self.save_index_chunks(bm25_index)
-            if self.gen_embeddings:
+            if self.bonus:
                 embedder = Embeddings()
                 matrix = embedder.encode(
-                    [c.text for c in self.chunks.values()])
+                    [c.text for c in self.chunks.values()], progress_bar=True)
                 embedder.save_index_embeddings(matrix)
 
         except OSError as e:

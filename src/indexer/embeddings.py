@@ -1,6 +1,6 @@
 import torch
 from transformers import AutoTokenizer, AutoModel
-from src.aux.constants import PathsAndNames, TQDM_FMT
+from src.aux.constants import PathsAndNames, TQDM_FMT, EMBEDDINGS_BATCH_SIZE
 from src.aux.colors import Colors
 import os
 from pathlib import Path
@@ -11,7 +11,7 @@ from tqdm import tqdm
 
 class Embeddings:
 
-    def __init__(self, batch_size: int = 64) -> None:
+    def __init__(self, batch_size: int = EMBEDDINGS_BATCH_SIZE) -> None:
         self.batch_size = batch_size
         self.device = "mps" if torch.backends.mps.is_available() \
             else "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,15 +54,17 @@ class Embeddings:
             f"Embeddings saved under {self.embeddings_path}."
             f"{Colors.RESET.value}")
 
-    def encode(self, texts: list[str]) -> torch.Tensor:
-        batch_size = 64
+    def encode(
+            self,
+            texts: list[str],
+            progress_bar: bool = False) -> torch.Tensor:
+        batch_size = self.batch_size
         sums = torch.zeros(len(texts), self.model.config.hidden_size)
         counts = torch.zeros(len(texts), 1)
         starts = range(0, len(texts), batch_size)
-        for start in tqdm(
-                starts,
-                desc="Generating embeddings",
-                bar_format=TQDM_FMT):
+        for start in tqdm(starts, disable=not progress_bar,
+                          desc="Generating embeddings...",
+                          bar_format=TQDM_FMT):
             batch_range = texts[start:start + self.batch_size]
             batch = self.tokenizer(
                 batch_range, max_length=256, truncation=True, stride=32,
@@ -86,8 +88,5 @@ class Embeddings:
                 0, mapping, torch.ones(len(mapping), 1))
 
         embeddings = torch.nn.functional.normalize(sums / counts, dim=1)
-        # self.save_index_embeddings(embeddings)
-        print(f"{Colors.GREEN.value}"
-              f"Data ingestion complete! Embeddings generated."
-              f"{Colors.RESET.value}")
+
         return embeddings

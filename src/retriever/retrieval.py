@@ -11,21 +11,39 @@ from src.entities.data_model import (
     StudentSearchResults,
     RagDataset)
 from src.indexer.tokenizer import Tokenizer
+from src.indexer.embeddings import Embeddings
 from rank_bm25 import BM25Okapi
 import numpy as np
 from tqdm import tqdm
 from typing import Any
+import os
+import torch
 
 # from icecream import ic
 
 
 class Retrieval:
-    def __init__(self) -> None:
+    def __init__(self, bonus: bool = False) -> None:
 
         self.tokenizer: Tokenizer = Tokenizer()
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
         self.booster = self.calculate_boosters()
+        self.bonus = bonus
+        if self.bonus:
+            self.embeddings = Embeddings()
+            matrix_path = os.path.join(
+                PathsAndNames.save_index_path.value,
+                PathsAndNames.embeddings_name.value
+            )
+            if not os.path.exists(matrix_path):
+                raise FileNotFoundError(
+                    f"{Colors.RED.value}[ERROR] - "
+                    f"The embeddings file '{matrix_path}'"
+                    f"{ErrorCodes.OS_ERROR.value}"
+                    f"{Colors.RESET.value}"
+                )
+            self.matrix = torch.from_numpy(np.load(matrix_path))
 
     def get_bm25_index(self) -> Any:
 
@@ -75,6 +93,9 @@ class Retrieval:
         query_tokens_lst = self.tokenizer.stem(query_tokens_lst)
         return query_tokens_lst
 
+    # def tokenize_query_embeddings(self, query: str) -> list[str]:
+    #     return self.embeddings.encode([query])
+
     def calculate_boosters(self) -> np.ndarray:
         py_chunks = sum(1
                         for chunk in self.chunks.chunks
@@ -97,15 +118,35 @@ class Retrieval:
 
     def get_query_scores(self, query: str, k: int) -> Any:
 
-        query_tokens = self.tokenize_query(query)
-        scores = self.bm25_index.get_scores(
-            query_tokens)  # type: ignore[no-untyped-call]
-        scores = scores * self.booster
-        # Returns the indices that would sort an array:
-        scores = np.argsort(scores, descending=True)
-        scores = scores.tolist()
+        def _ranks(scores: np.ndarray) -> np.ndarray:
+            """Return the 1-based rank of each position (1 = best score)."""
+            order = np.argsort(-scores)
+            ranks = np.empty_like(order)
+            ranks[order] = np.arange(1, len(scores) + 1)
+            return ranks
 
-        return scores[:k]
+        query_tokens = self.tokenize_query(query)
+        if self.bonus:
+            query_encoded = self.embeddings.encode([query])
+            bm25_scores = self.bm25_index.get_scores(
+                query_tokens) * self.booster   # type: ignore[no-untyped-call]
+            cos_scores = (self.matrix @ query_encoded.numpy().T).ravel()
+            # Both scores together using Reciprocal Rank Fusion (RRF)
+            rrf_k = 60
+            fused = 1 / (rrf_k + _ranks(bm25_scores)) + \
+                1 / (rrf_k + _ranks(cos_scores))
+            scores = np.argsort(-fused)
+            scores = scores.tolist()
+            return scores[:k]
+        else:
+            scores = self.bm25_index.get_scores(
+                query_tokens)  # type: ignore[no-untyped-call]
+            scores = scores * self.booster
+            # Returns the indices that would sort an array:
+            scores = np.argsort(scores, descending=True)
+            scores = scores.tolist()
+
+            return scores[:k]
 
     def get_query_chunks(
             self,
@@ -162,7 +203,7 @@ class Retrieval:
         minimal_result_list = []
 
         for question in tqdm(dataset.rag_questions,
-                             desc="Getting the dataset result...",
+                             desc="Getting the dataset chunks...",
                              bar_format=TQDM_FMT):
             query_sources = self.get_query_chunks(question.question, k)
             minimal_search_result = MinimalSearchResults(

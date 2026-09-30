@@ -72,21 +72,23 @@ index: install
 	@echo "$(GRAY)$$HEADER$(DEF_COLOR)"
 	@echo "$(MAGENTA)INDEXING PROCESS...$(DEF_COLOR)"
 	@read -p "Enter chunk size: " CHUNK_SIZE;\
-	read -p "Embbedings? (True/False): " EMBEDDINGS;\
-	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE" --get_embeddings "$$EMBEDDINGS"
+	read -p "BONUS?: (y/n): " BONUS_INDEX;\
+	uv run python3 -m src index --max_chunk_size "$$CHUNK_SIZE" --bonus "$$BONUS_INDEX"
 
 search: index
 	@echo "$(MAGENTA)SEARCH A SINGLE QUERY...$(DEF_COLOR)"
 	@read -p "Query: " QUERY;\
 	read -p "K value: " K_VALUE;\
-	uv run python3 -m src search "$$QUERY" --k "$$K_VALUE"
+	read -p "BONUS?: (y/n): " BONUS_SEARCH;\
+	uv run python3 -m src search "$$QUERY" --k "$$K_VALUE" --bonus "$$BONUS_SEARCH"
 
 search_dataset: index
 	@echo "$(MAGENTA)SEARCH DATASET...$(DEF_COLOR)"
 	@read -p "Dataset path: " DATASET_PATH;\
 	read -p "Saving path: " SAVING_PATH;\
 	read -p "K value: " K_VALUE;\
-	uv run python3 -m src search_dataset "$$DATASET_PATH" --k "$$K_VALUE" "$$SAVING_PATH"
+	read -p "BONUS?: (y/n): " BONUS_SEARCH_DS;\
+	uv run python3 -m src search_dataset "$$DATASET_PATH" --k "$$K_VALUE" "$$SAVING_PATH" --bonus "$$BONUS_SEARCH_DS"
 
 answer: index
 	@echo "$(MAGENTA)ANSWERING A QUERY...$(DEF_COLOR)"

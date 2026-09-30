@@ -50,5 +50,5 @@ class ErrorCodes(Enum):
     STUDENT_DATASET_SAME = "The student file and dataset file indicated are "\
         "the same."
 
-    EMBEDDINGS_NOK = "The get_embeddings value introduced is not a valid "\
+    BONUS_NOK = "The bonus value introduced is not a valid "\
         "boolean."

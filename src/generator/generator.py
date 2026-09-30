@@ -108,7 +108,7 @@ class Generator:
 
         output = self.model_launch(messages)
         if print_:
-            print(output)
+            print(f"\n{output}")
 
     def get_chunk(self, path_: str, from_: int, to_: int) -> str:
         """Return the text of a file between two offsets.
