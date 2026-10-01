@@ -37,6 +37,9 @@ class PathsAndNames(Enum):
     chunks_json = "/chunks.json"
     embeddings_name = "embeddings.npy"
     embeddings_info_name = "embeddings_info.json"
+    cache_path = "data/cache"
+    cache_sources_name = "sources.json"
+    cache_answers_name = "answers.json"
 
 
 MIN_RATIO = 0.3

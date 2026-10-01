@@ -5,6 +5,7 @@ description = "Retrieval-Augmented Generation."
 readme = "README.md"
 requires-python = ">=3.13"
 dependencies = [
+    "fastapi[standard]>=0.142.2",
     "fire>=0.7.1",
     "flake8>=7.3.0",
     "icecream>=2.2.0",

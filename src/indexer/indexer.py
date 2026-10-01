@@ -15,6 +15,7 @@ from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
 from src.indexer.embeddings import Embeddings
 
+
 # from icecream import ic
 
 
@@ -41,6 +42,11 @@ class Indexer:
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}
         self.bonus = bonus
+        # Deleting the cache files since the index is being rebuilt
+        cache_sources_path = Path(os.path.join(
+            PathsAndNames.cache_path.value,
+            PathsAndNames.cache_sources_name.value))
+        cache_sources_path.unlink(missing_ok=True)
 
     def get_input_files(self) -> None:
         """Collect every file under the corpus folder into ``files_lst``.

@@ -12,12 +12,15 @@ from src.entities.data_model import (
     RagDataset)
 from src.indexer.tokenizer import Tokenizer
 from src.indexer.embeddings import Embeddings
+from src.cacher.cacher import CacheHandler
 from rank_bm25 import BM25Okapi
 import numpy as np
 from tqdm import tqdm
 from typing import Any
 import os
 import torch
+# from pathlib import Path
+# import json
 
 # from icecream import ic
 
@@ -29,6 +32,8 @@ class Retrieval:
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
         self.booster = self.calculate_boosters()
+        self.cacher = CacheHandler()
+        self.cache = self.cacher.load_cache()
         self.bonus = bonus
         if self.bonus:
             self.embeddings = Embeddings()
@@ -93,9 +98,6 @@ class Retrieval:
         query_tokens_lst = self.tokenizer.stem(query_tokens_lst)
         return query_tokens_lst
 
-    # def tokenize_query_embeddings(self, query: str) -> list[str]:
-    #     return self.embeddings.encode([query])
-
     def calculate_boosters(self) -> np.ndarray:
         py_chunks = sum(1
                         for chunk in self.chunks.chunks
@@ -133,6 +135,7 @@ class Retrieval:
             cos_scores = (self.matrix @ query_encoded.numpy().T).ravel()
             # Both scores together using Reciprocal Rank Fusion (RRF)
             rrf_k = 60
+            # w_bm25, w_cos = 1.0, 0.5
             fused = 1 / (rrf_k + _ranks(bm25_scores)) + \
                 1 / (rrf_k + _ranks(cos_scores))
             scores = np.argsort(-fused)
@@ -148,24 +151,207 @@ class Retrieval:
 
             return scores[:k]
 
+    def _retrieve(self, query: str, k: int) -> list[MinimalSource]:
+        """Run the real search, without cache."""
+        chunk_indexes = self.get_query_scores(query, k)
+
+        return [
+            self.chunks.chunks[index].metadata for index in chunk_indexes]
+
+    def _retrieve_with_cache(
+            self,
+            query: str,
+            k: int,
+    ) -> tuple[list[MinimalSource], bool]:
+        """Look the query up in an already loaded cache.
+
+        On a miss, run the search and store the result in `cache`.
+        Returns the sources and True if it was a cache hit.
+        """
+        key = self.cacher.make_key(query, k)
+        if key in self.cache:
+            return [MinimalSource(**item) for item in self.cache[key]], True
+        sources = self._retrieve(query, k)
+        self.cache[key] = [item.model_dump() for item in sources]
+        return sources, False
+
+    # def get_query_chunks(
+    #         self,
+    #         query: str,
+    #         k: int,
+    #         print_: bool = False) -> list[MinimalSource]:
+
+    #     if self.bonus:
+    #     # Checking if the query is already cached
+    #         key = self.cacher.make_key(query, k)
+    #         if key in self.cache.keys():
+    #             minimal_source_lst = [
+    #                 MinimalSource(**item) for item in self.cache[key]]
+    #         else:
+    #             chunk_indexes = self.get_query_scores(query, k)
+    #             minimal_source_lst = [
+    #                 self.chunks.chunks[index].metadata
+    #                 for index in chunk_indexes
+    #             ]
+    #             self.cache[key] = [item.model_dump()
+    #             for item in minimal_source_lst]
+    #         self.cacher.save_cache(self.cache)
+    #     else:
+    #         chunk_indexes = self.get_query_scores(query, k)
+    #         minimal_source_lst = [
+    #             self.chunks.chunks[index].metadata for index in chunk_indexes
+    #         ]
+
+    #     if print_:
+    #         print(
+    #             f"{Colors.GREEN.value}[INFO] - "
+    #             f"Cache hit for query '{query}' with k={k}."
+    #             f"{Colors.RESET.value}")
+    #         for entry in minimal_source_lst:
+    #             print(f"{entry.file_path} ["
+    #                   f"{entry.first_character_index}:"
+    #                   f"{entry.last_character_index}]")
+
+    #     return minimal_source_lst
+
     def get_query_chunks(
             self,
             query: str,
             k: int,
             print_: bool = False) -> list[MinimalSource]:
 
-        chunk_indexes = self.get_query_scores(query, k)
-        minimal_source_lst = [
-            self.chunks.chunks[index].metadata for index in chunk_indexes
-            ]
+        is_in_cache = False
+        if self.bonus:
+            # Checking if the query is already cached
+            sources, is_in_cache = self._retrieve_with_cache(
+                query, k)
+            if not is_in_cache:
+                self.cacher.save_cache(self.cache)
+        else:
+            sources = self._retrieve(query, k)
 
         if print_:
-            for entry in minimal_source_lst:
+            if is_in_cache:
+                print(
+                    f"{Colors.GREEN.value}[INFO] - "
+                    f"Cache hit for query '{query}' with k={k}."
+                    f"{Colors.RESET.value}")
+
+            for entry in sources:
                 print(f"{entry.file_path} ["
                       f"{entry.first_character_index}:"
                       f"{entry.last_character_index}]")
+        return sources
 
-        return minimal_source_lst
+    # def get_batch_query_chunks(self,
+    #                            dataset_path: str,
+    #                            k: int,
+    #                            save_directory: str) -> None:
+
+    #     try:
+    #         with open(dataset_path, mode='r') as fdc:
+    #             dataset = RagDataset.model_validate_json(fdc.read())
+    #     except OSError as e:
+    #         raise OSError(
+    #             f"{Colors.RED.value}[ERROR] - "
+    #             f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") \
+    # from e
+    #     except pydantic.ValidationError as e:
+    #         raise ValueError(e)
+
+    #     minimal_result_list = []
+    #     questions_found_cache = 0
+
+    #     for question in tqdm(dataset.rag_questions,
+    #                          desc="Getting the dataset chunks...",
+    #                          bar_format=TQDM_FMT):
+
+    #         if self.bonus:
+    #             # Checking if the query is already cached
+    #             key = self.cacher.make_key(question.question, k)
+    #             if key in self.cache.keys():
+    #                 questions_found_cache += 1
+    #                 query_sources= [
+    #                     MinimalSource(**item) for item in self.cache[key]]
+    #             else:
+    #                 query_sources = self.get_query_chunks(
+    # question.question, k)
+    #                 # self.cache[key] = [
+    #                       item.model_dump() for item in query_sources]
+    #         else:
+    #             query_sources = self.get_query_chunks(question.question, k)
+
+    #         minimal_search_result = MinimalSearchResults(
+    #             question_id=question.question_id,
+    #             question=question.question,
+    #             retrieved_sources=query_sources
+    #         )
+    #         minimal_result_list.append(minimal_search_result)
+
+    #     result = StudentSearchResults(
+    #         search_results=minimal_result_list,
+    #         k=k
+    #     )
+    #     print(f"{Colors.GREEN.value}[INFO] - "
+    #           f"Found {questions_found_cache} questions in cache out of "
+    #           f"{len(dataset.rag_questions)} total questions."
+    #           f"{Colors.RESET.value}")
+    #     # Saving result
+    #     self.save_json(save_directory, result)
+
+    def get_batch_query_chunks(self,
+                               dataset_path: str,
+                               k: int,
+                               save_directory: str) -> None:
+
+        try:
+            with open(dataset_path, mode='r') as fdc:
+                dataset = RagDataset.model_validate_json(fdc.read())
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+
+        minimal_result_list = []
+        questions_found_cache = 0
+
+        for question in tqdm(dataset.rag_questions,
+                             desc="Getting the dataset chunks...",
+                             bar_format=TQDM_FMT):
+
+            if self.bonus:
+                # Checking if the query is already cached
+                query_sources, is_in_cache = self._retrieve_with_cache(
+                    question.question, k
+                )
+                if is_in_cache:
+                    questions_found_cache += 1
+
+            else:
+                query_sources = self._retrieve(question.question, k)
+
+            minimal_search_result = MinimalSearchResults(
+                question_id=question.question_id,
+                question=question.question,
+                retrieved_sources=query_sources
+            )
+            minimal_result_list.append(minimal_search_result)
+        if self.bonus:
+            self.cacher.save_cache(self.cache)
+            print(
+                f"{Colors.GREEN.value}[INFO] - "
+                f"Found {questions_found_cache} questions in cache out of "
+                f"{len(dataset.rag_questions)} total questions."
+                f"{Colors.RESET.value}")
+
+        result = StudentSearchResults(
+            search_results=minimal_result_list,
+            k=k
+        )
+        # Saving result
+        self.save_json(save_directory, result)
 
     def save_json(
             self,
@@ -184,38 +370,3 @@ class Retrieval:
         print(f"{Colors.GREEN.value}"
               f"Saved student_search_results to "
               f"{save_directory}{Colors.RESET.value}")
-
-    def get_batch_query_chunks(self,
-                               dataset_path: str,
-                               k: int,
-                               save_directory: str) -> None:
-
-        try:
-            with open(dataset_path, mode='r') as fdc:
-                dataset = RagDataset.model_validate_json(fdc.read())
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
-
-        minimal_result_list = []
-
-        for question in tqdm(dataset.rag_questions,
-                             desc="Getting the dataset chunks...",
-                             bar_format=TQDM_FMT):
-            query_sources = self.get_query_chunks(question.question, k)
-            minimal_search_result = MinimalSearchResults(
-                question_id=question.question_id,
-                question=question.question,
-                retrieved_sources=query_sources
-            )
-            minimal_result_list.append(minimal_search_result)
-
-        result = StudentSearchResults(
-            search_results=minimal_result_list,
-            k=k
-        )
-        # Saving result
-        self.save_json(save_directory, result)
