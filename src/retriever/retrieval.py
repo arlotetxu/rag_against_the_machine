@@ -19,8 +19,7 @@ from tqdm import tqdm
 from typing import Any
 import os
 import torch
-# from pathlib import Path
-# import json
+from pathlib import Path
 
 # from icecream import ic
 
@@ -32,11 +31,14 @@ class Retrieval:
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
         self.booster = self.calculate_boosters()
-        self.cacher = CacheHandler()
-        self.cache = self.cacher.load_cache()
         self.bonus = bonus
+        self.embeddings: Embeddings | None = None
         if self.bonus:
-            self.embeddings = Embeddings()
+            self.cacher = CacheHandler(Path(os.path.join(
+                PathsAndNames.cache_path.value,
+                PathsAndNames.cache_sources_name.value)))
+            self.cache = self.cacher.load_cache()
+            # self.embeddings = Embeddings()
             matrix_path = os.path.join(
                 PathsAndNames.save_index_path.value,
                 PathsAndNames.embeddings_name.value
@@ -129,7 +131,8 @@ class Retrieval:
 
         query_tokens = self.tokenize_query(query)
         if self.bonus:
-            query_encoded = self.embeddings.encode([query])
+            if self.embeddings is not None:
+                query_encoded = self.embeddings.encode([query])
             bm25_scores = self.bm25_index.get_scores(
                 query_tokens) * self.booster   # type: ignore[no-untyped-call]
             cos_scores = (self.matrix @ query_encoded.numpy().T).ravel()
@@ -169,50 +172,11 @@ class Retrieval:
         Returns the sources and True if it was a cache hit.
         """
         key = self.cacher.make_key(query, k)
-        if key in self.cache:
+        if key in self.cache.keys():
             return [MinimalSource(**item) for item in self.cache[key]], True
         sources = self._retrieve(query, k)
         self.cache[key] = [item.model_dump() for item in sources]
         return sources, False
-
-    # def get_query_chunks(
-    #         self,
-    #         query: str,
-    #         k: int,
-    #         print_: bool = False) -> list[MinimalSource]:
-
-    #     if self.bonus:
-    #     # Checking if the query is already cached
-    #         key = self.cacher.make_key(query, k)
-    #         if key in self.cache.keys():
-    #             minimal_source_lst = [
-    #                 MinimalSource(**item) for item in self.cache[key]]
-    #         else:
-    #             chunk_indexes = self.get_query_scores(query, k)
-    #             minimal_source_lst = [
-    #                 self.chunks.chunks[index].metadata
-    #                 for index in chunk_indexes
-    #             ]
-    #             self.cache[key] = [item.model_dump()
-    #             for item in minimal_source_lst]
-    #         self.cacher.save_cache(self.cache)
-    #     else:
-    #         chunk_indexes = self.get_query_scores(query, k)
-    #         minimal_source_lst = [
-    #             self.chunks.chunks[index].metadata for index in chunk_indexes
-    #         ]
-
-    #     if print_:
-    #         print(
-    #             f"{Colors.GREEN.value}[INFO] - "
-    #             f"Cache hit for query '{query}' with k={k}."
-    #             f"{Colors.RESET.value}")
-    #         for entry in minimal_source_lst:
-    #             print(f"{entry.file_path} ["
-    #                   f"{entry.first_character_index}:"
-    #                   f"{entry.last_character_index}]")
-
-    #     return minimal_source_lst
 
     def get_query_chunks(
             self,
@@ -243,62 +207,6 @@ class Retrieval:
                       f"{entry.last_character_index}]")
         return sources
 
-    # def get_batch_query_chunks(self,
-    #                            dataset_path: str,
-    #                            k: int,
-    #                            save_directory: str) -> None:
-
-    #     try:
-    #         with open(dataset_path, mode='r') as fdc:
-    #             dataset = RagDataset.model_validate_json(fdc.read())
-    #     except OSError as e:
-    #         raise OSError(
-    #             f"{Colors.RED.value}[ERROR] - "
-    #             f"The file '{dataset_path}'{ErrorCodes.OS_ERROR.value}") \
-    # from e
-    #     except pydantic.ValidationError as e:
-    #         raise ValueError(e)
-
-    #     minimal_result_list = []
-    #     questions_found_cache = 0
-
-    #     for question in tqdm(dataset.rag_questions,
-    #                          desc="Getting the dataset chunks...",
-    #                          bar_format=TQDM_FMT):
-
-    #         if self.bonus:
-    #             # Checking if the query is already cached
-    #             key = self.cacher.make_key(question.question, k)
-    #             if key in self.cache.keys():
-    #                 questions_found_cache += 1
-    #                 query_sources= [
-    #                     MinimalSource(**item) for item in self.cache[key]]
-    #             else:
-    #                 query_sources = self.get_query_chunks(
-    # question.question, k)
-    #                 # self.cache[key] = [
-    #                       item.model_dump() for item in query_sources]
-    #         else:
-    #             query_sources = self.get_query_chunks(question.question, k)
-
-    #         minimal_search_result = MinimalSearchResults(
-    #             question_id=question.question_id,
-    #             question=question.question,
-    #             retrieved_sources=query_sources
-    #         )
-    #         minimal_result_list.append(minimal_search_result)
-
-    #     result = StudentSearchResults(
-    #         search_results=minimal_result_list,
-    #         k=k
-    #     )
-    #     print(f"{Colors.GREEN.value}[INFO] - "
-    #           f"Found {questions_found_cache} questions in cache out of "
-    #           f"{len(dataset.rag_questions)} total questions."
-    #           f"{Colors.RESET.value}")
-    #     # Saving result
-    #     self.save_json(save_directory, result)
-
     def get_batch_query_chunks(self,
                                dataset_path: str,
                                k: int,
@@ -316,6 +224,11 @@ class Retrieval:
 
         minimal_result_list = []
         questions_found_cache = 0
+
+        if self.bonus and self.embeddings is None and any(
+            self.cacher.make_key(q.question, k) not in self.cache
+                for q in dataset.rag_questions):
+            self.embeddings = Embeddings()
 
         for question in tqdm(dataset.rag_questions,
                              desc="Getting the dataset chunks...",
@@ -348,8 +261,7 @@ class Retrieval:
 
         result = StudentSearchResults(
             search_results=minimal_result_list,
-            k=k
-        )
+            k=k)
         # Saving result
         self.save_json(save_directory, result)
 

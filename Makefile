@@ -38,6 +38,7 @@ define HEADER
 
 endef
 export HEADER
+# export HF_HUB_OFFLINE := 1
 
 # ===============================DEFINITIONS===============================
 DEF_COLOR   = \033[0;39m

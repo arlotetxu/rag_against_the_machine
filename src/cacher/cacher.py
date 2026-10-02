@@ -1,19 +1,17 @@
 import json
-import os
 from pathlib import Path
-from typing import Any
-from src.aux.constants import PathsAndNames
+from typing import Any, Optional
 
 
 class CacheHandler():
-    def __init__(self) -> None:
-        self.cache_path = Path(os.path.join(
-            PathsAndNames.cache_path.value,
-            PathsAndNames.cache_sources_name.value))
+    def __init__(self, cache_path: Path) -> None:
+        self.cache_path = cache_path
 
-    def make_key(self, query: str, k: int) -> str:
+    def make_key(self, query: str, k: Optional[int]) -> str:
         """Build the cache key. Includes k so k=5 and k=10 don't mix."""
-        return f"{k}::{query}"
+        if k:
+            return f"{k}::{query}"
+        return query
 
     def load_cache(self) -> dict[str, list[dict[str, Any]]]:
         """Read the cache from disk.

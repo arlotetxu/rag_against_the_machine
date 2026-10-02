@@ -51,4 +51,4 @@ class ErrorCodes(Enum):
         "the same."
 
     BONUS_NOK = "The bonus value introduced is not a valid "\
-        "boolean."
+        "boolean (y/n)."
