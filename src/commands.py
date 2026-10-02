@@ -265,3 +265,37 @@ def evaluate(student_search_results_path: str,
 
     evaluate = Evaluate()
     evaluate.get_recall(student_search_results_path, dataset_path, k)
+
+
+def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+    """Start the local HTTP API server.
+
+    Args:
+        host (str): Address to listen on. 127.0.0.1 = this machine only.
+        port (int): Port to listen on.
+    """
+    if not isinstance(port, int) or not 1 <= port <= 65535:
+        print(
+            f"{Colors.RED.value}[ERROR] - "
+            f"Invalid port '{port}'. It must be an integer "
+            f"between 1 and 65535.{Colors.RESET.value}")
+        return
+
+    try:
+        retrieval = Retrieval(bonus=False)
+
+    except (OSError, ValueError) as e:
+        print(e)
+        print(
+            f"{Colors.RED.value}[ERROR] - "
+            f"Could not load the index. Run "
+            f"'uv run python -m src index' first."
+            f"{Colors.RESET.value}")
+        return
+
+    import uvicorn
+    from src.server.api import app
+
+    # app instances box
+    app.state.retrieval = retrieval
+    uvicorn.run(app, host=host, port=port)

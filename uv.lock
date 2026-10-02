@@ -1557,6 +1557,7 @@ dependencies = [
     { name = "transformers" },
     { name = "tree-sitter" },
     { name = "tree-sitter-python" },
+    { name = "uvicorn" },
 ]
 
 [package.metadata]
@@ -1577,6 +1578,7 @@ requires-dist = [
     { name = "transformers", specifier = ">=5.17.0" },
     { name = "tree-sitter", specifier = ">=0.26.0" },
     { name = "tree-sitter-python", specifier = ">=0.25.0" },
+    { name = "uvicorn", specifier = ">=0.54.0" },
 ]
 
 [[package]]

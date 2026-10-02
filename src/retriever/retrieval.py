@@ -44,7 +44,7 @@ class Retrieval:
                 PathsAndNames.embeddings_name.value
             )
             if not os.path.exists(matrix_path):
-                raise FileNotFoundError(
+                raise OSError(
                     f"{Colors.RED.value}[ERROR] - "
                     f"The embeddings file '{matrix_path}'"
                     f"{ErrorCodes.OS_ERROR.value}"
@@ -62,7 +62,7 @@ class Retrieval:
             with open(path, mode='rb') as fd:
                 bm25_index = pickle.load(fd)
         except OSError:
-            raise FileNotFoundError(
+            raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The index file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )
@@ -79,7 +79,7 @@ class Retrieval:
             with open(path, mode='r') as fd:
                 ragindex_chunks = RagIndex.model_validate_json(fd.read())
         except OSError:
-            raise FileNotFoundError(
+            raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The chunks file '{path}'{ErrorCodes.OS_ERROR.value}"
                 )

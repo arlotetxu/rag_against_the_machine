@@ -19,6 +19,7 @@ from src.commands import (
     index,
     search,
     search_dataset,
+    serve,
 )
 
 
@@ -36,6 +37,7 @@ def main() -> None:
         'answer': answer,
         'answer_dataset': answer_dataset,
         'evaluate': evaluate,
+        'serve': serve,
     })  # type: ignore[no-untyped-call]
 
 
