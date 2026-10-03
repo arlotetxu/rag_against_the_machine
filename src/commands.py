@@ -78,6 +78,21 @@ def search(query: str, k: int = 5, bonus: str = 'n') -> None:
         query=query, k=k, print_=True)
 
 
+def build_output_path(dataset_path: str, save_directory: str) -> Path:
+    dataset_file = Path(dataset_path)
+    if not dataset_file.exists():
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
+                         f"{Colors.RESET.value}")
+    save_folder = Path(save_directory)
+    if dataset_file.parent == save_folder:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}"
+                         f"{Colors.RESET.value}")
+    save_folder.mkdir(parents=True, exist_ok=True)
+    return save_folder / dataset_file.name
+
+
 def search_dataset(
         dataset_path: str =
         "data/datasets/AnsweredQuestions/dataset_docs_public.json",
@@ -120,19 +135,7 @@ def search_dataset(
                          f"{ErrorCodes.BONUS_NOK.value}"
                          f"{Colors.RESET.value}")
 
-    dataset_file = Path(dataset_path)
-    if not dataset_file.exists():
-        raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.DATASET_PATH_NOK.value}"
-                         f"{Colors.RESET.value}")
-
-    save_folder = Path(save_directory)
-    if dataset_file.parent == save_folder:
-        raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}"
-                         f"{Colors.RESET.value}")
-    save_folder.mkdir(parents=True, exist_ok=True)
-    output_path = save_folder / dataset_file.name
+    output_path = build_output_path(dataset_path, save_directory)
 
     retrieval = Retrieval(bonus=bonus.lower() == 'y')
     retrieval.get_batch_query_chunks(dataset_path, k, str(output_path))
@@ -194,19 +197,8 @@ def answer_dataset(student_search_results_path: str,
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
                          f"{Colors.RESET.value}")
 
-    student_file = Path(student_search_results_path)
-    if not student_file.exists():
-        raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.STUDENT_FILE_NOK.value}"
-                         f"{Colors.RESET.value}")
-    save_folder = Path(save_directory)
-
-    if student_file.parent == save_folder:
-        raise ValueError(f"{Colors.RED.value}[ERROR] - "
-                         f"{ErrorCodes.SAVE_FOLDER_EQ_DATASET.value}"
-                         f"{Colors.RESET.value}")
-    save_folder.mkdir(parents=True, exist_ok=True)
-    output_path = save_folder / student_file.name
+    output_path = build_output_path(
+        student_search_results_path, save_directory)
 
     generator = Generator()
     generator.get_batch_query_answer(
@@ -283,6 +275,7 @@ def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
 
     try:
         retrieval = Retrieval(bonus=False)
+        generator = Generator()
 
     except (OSError, ValueError) as e:
         print(e)
@@ -298,4 +291,5 @@ def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
 
     # app instances box
     app.state.retrieval = retrieval
+    app.state.generator = generator
     uvicorn.run(app, host=host, port=port)

@@ -80,7 +80,7 @@ class Generator:
     def get_single_answer(
             self, query: str,
             k: int = 3,
-            print_: bool = False) -> None:
+            print_: bool = False) -> str:
         """Answer one question using its top-k retrieved chunks.
 
         The answer is not returned or saved; it is only printed, and only
@@ -109,6 +109,7 @@ class Generator:
         output = self.model_launch(messages)
         if print_:
             print(f"\n{output}")
+        return output
 
     def get_chunk(self, path_: str, from_: int, to_: int) -> str:
         """Return the text of a file between two offsets.
@@ -165,7 +166,7 @@ class Generator:
     def get_batch_query_answer(
             self,
             student_search_results_path: str,
-            output_file_path: str) -> None:
+            output_file_path: str) -> StudentSearchResultsAndAnswer:
         """Answer every question in a search-results file and save them.
 
         Each question gets its own first ``K_FOR_ANSWER`` retrieved chunks
@@ -237,7 +238,7 @@ class Generator:
                     answer=answer_))
             q_counter += 1
 
-        to_save = StudentSearchResultsAndAnswer(
+        student_result = StudentSearchResultsAndAnswer(
             search_results=student_answers,
             k=k_)
 
@@ -248,4 +249,5 @@ class Generator:
             f"Processed {q_counter} of "
             f"{total_questions} questions."
             f"{Colors.RESET.value}")
-        self.save_student_answer(to_save, output_file_path)
+        self.save_student_answer(student_result, output_file_path)
+        return student_result

@@ -110,6 +110,10 @@ evaluate: search_dataset
 	read -p "K value: " K_VALUE;\
 	uv run python3 -m src evaluate "$$STUDENT_PATH" "$$DATASET_PATH" --k "$$K_VALUE"
 
+server: install
+	@echo "$(MAGENTA)STARTING SERVER...$(DEF_COLOR)"
+	uv run python3 -m src serve
+
 moulinette: install index search_dataset
 	@echo "$(MAGENTA)MOULINETTE EVALUATION...$(DEF_COLOR)"
 	@read -p "Student file path: " STUDENT_PATH;\

@@ -210,7 +210,7 @@ class Retrieval:
     def get_batch_query_chunks(self,
                                dataset_path: str,
                                k: int,
-                               save_directory: str) -> None:
+                               save_directory: str) -> StudentSearchResults:
 
         try:
             with open(dataset_path, mode='r') as fdc:
@@ -264,6 +264,7 @@ class Retrieval:
             k=k)
         # Saving result
         self.save_json(save_directory, result)
+        return result
 
     def save_json(
             self,
@@ -275,7 +276,8 @@ class Retrieval:
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}") \
+                f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}"
+                f"{Colors.RESET.value}") \
                     from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
