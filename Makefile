@@ -112,7 +112,8 @@ evaluate: search_dataset
 
 server: install
 	@echo "$(MAGENTA)STARTING SERVER...$(DEF_COLOR)"
-	uv run python3 -m src serve
+	@read -p "BONUS?: (y/n): " BONUS_SERVER;\
+	uv run python3 -m src serve --bonus "$$BONUS_SERVER"
 
 moulinette: install index search_dataset
 	@echo "$(MAGENTA)MOULINETTE EVALUATION...$(DEF_COLOR)"

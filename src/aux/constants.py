@@ -50,6 +50,20 @@ K_FOR_ANSWER = 3
 
 EMBEDDINGS_BATCH_SIZE = 64
 
+SYSTEM_PROMPT = (
+    "You are an assistant that answers questions about the vLLM "
+    "source code and documentation, using ONLY the given portions "
+    "of context. If the context does not contain the answer, you "
+    "MUST say that the question cannot be answered with the "
+    "available information. Do not use external knowledge or make "
+    "up information.\n"
+)
+
+MODEL_NAME = "Qwen/Qwen3-0.6B"
+# MODEL_NAME2 = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
+# MODEL_NAME3 = "Qwen/Qwen2.5-0.5B-Instruct"
+# MODEL_NAME4 = "HuggingFaceTB/SmolLM2-360M-Instruct"
+
 TQDM_FMT = (
     "{desc:<32}{percentage:3.0f}%|{bar:30}| "
     "{n_fmt:>6}/{total_fmt:<6} [{elapsed}<{remaining}]"

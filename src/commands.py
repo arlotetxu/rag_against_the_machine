@@ -35,7 +35,7 @@ def index(max_chunk_size: int = 800, bonus: str = 'n') -> None:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.CHUNK_SIZE_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not bonus.lower() in ['y', 'n']:
+    if bonus.lower() not in ['y', 'n']:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.BONUS_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -69,7 +69,7 @@ def search(query: str, k: int = 5, bonus: str = 'n') -> None:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.QUERY_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not bonus.lower() in ['y', 'n']:
+    if bonus.lower() not in ['y', 'n']:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.BONUS_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -130,7 +130,7 @@ def search_dataset(
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not bonus.lower() in ['y', 'n']:
+    if bonus.lower() not in ['y', 'n']:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.BONUS_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -167,7 +167,8 @@ def answer(query: str, k: int = 3) -> None:
 
 
 def answer_dataset(student_search_results_path: str,
-                   save_directory: str) -> None:
+                   save_directory: str,
+                   bonus: str = 'n') -> None:
     """Answer every question in a search-results file with the LLM.
 
     For each question, up to ``K_FOR_ANSWER`` of its retrieved chunks are
@@ -196,11 +197,15 @@ def answer_dataset(student_search_results_path: str,
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
                          f"{Colors.RESET.value}")
+    if bonus.lower() not in ['y', 'n']:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.BONUS_NOK.value}"
+                         f"{Colors.RESET.value}")
 
     output_path = build_output_path(
         student_search_results_path, save_directory)
 
-    generator = Generator()
+    generator = Generator(bonus=bonus.lower() == 'y')
     generator.get_batch_query_answer(
         student_search_results_path, str(output_path))
 
@@ -259,7 +264,10 @@ def evaluate(student_search_results_path: str,
     evaluate.get_recall(student_search_results_path, dataset_path, k)
 
 
-def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
+def serve(
+        host: str = "127.0.0.1",
+        port: int = 8000,
+        bonus: str = 'n') -> None:
     """Start the local HTTP API server.
 
     Args:
@@ -267,15 +275,20 @@ def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
         port (int): Port to listen on.
     """
     if not isinstance(port, int) or not 1 <= port <= 65535:
-        print(
+        raise ValueError(
             f"{Colors.RED.value}[ERROR] - "
             f"Invalid port '{port}'. It must be an integer "
             f"between 1 and 65535.{Colors.RESET.value}")
         return
+    if bonus.lower() not in ['y', 'n']:
+        raise ValueError(f"{Colors.RED.value}[ERROR] - "
+                         f"{ErrorCodes.BONUS_NOK.value}"
+                         f"{Colors.RESET.value}")
+    with_bonus = bonus.lower() == 'y'
 
     try:
-        retrieval = Retrieval(bonus=False)
-        generator = Generator()
+        retrieval = Retrieval(bonus=with_bonus)
+        generator = Generator(bonus=with_bonus)
 
     except (OSError, ValueError) as e:
         print(e)

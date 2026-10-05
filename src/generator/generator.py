@@ -1,13 +1,22 @@
 """Answer generation with the LLM from retrieved context."""
+import os
 from src.generator.prompt import PromptBuild
 from src.generator.model import Model
 from src.entities.data_model import (
     StudentSearchResults,
     StudentSearchResultsAndAnswer,
-    MinimalAnswer)
+    MinimalAnswer,
+    MinimalSource)
+from src.cacher.cacher import CacheHandler
+from src.retriever.retrieval import Retrieval
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
-from src.aux.constants import TQDM_FMT, K_FOR_ANSWER, MAX_OUT_TOKENS
+from src.aux.constants import (
+    TQDM_FMT,
+    K_FOR_ANSWER,
+    MAX_OUT_TOKENS,
+    SYSTEM_PROMPT,
+    PathsAndNames)
 import pydantic
 from pathlib import Path
 from tqdm import tqdm
@@ -19,7 +28,7 @@ from transformers import BatchEncoding
 class Generator:
     """Answer questions with the LLM, using retrieved chunks as context."""
 
-    def __init__(self) -> None:
+    def __init__(self, bonus: bool = False) -> None:
         """Load the retriever, the prompt builder and the LLM.
 
         This loads the BM25 index and the chunks from disk and the model
@@ -27,9 +36,17 @@ class Generator:
         can take a while.
         """
         self.prompt_builder = PromptBuild()
+        self.initial_prompt = SYSTEM_PROMPT
         model_inst = Model()
         self.model = model_inst.model
         self.tokenizer = model_inst.tokenizer
+        self.bonus = bonus
+        if self.bonus:
+            self.cacher = CacheHandler(Path(os.path.join(
+                PathsAndNames.cache_path.value,
+                PathsAndNames.cache_answers_name.value)))
+            self.cache = self.cacher.load_cache()
+            self.retrieval = Retrieval(self.bonus)
 
     def model_launch(self, messages: list[dict[str, str]]) -> str:
         """Run the LLM on a chat conversation and return its reply.
@@ -77,6 +94,28 @@ class Generator:
 
         return output_str
 
+    def _retrieve_with_cache(
+            self,
+            query: str,
+            k: int,
+            prompt_context: str) -> tuple[list[MinimalSource], str, bool]:
+
+        key = self.cacher.make_answer_key(
+            query=query,
+            k=k,
+            prompt_context=prompt_context)
+        if key in self.cache.keys():
+            entry = self.cache[key]
+            sources = [MinimalSource(**item) for item in entry["sources"]]
+            return sources, entry["answer"], True
+        sources = self.retrieval.get_query_chunks(query, k)
+        answer = self.get_single_answer(query, k)
+        self.cache[key] = {
+            "sources": [item.model_dump() for item in sources],
+            "answer": answer,
+        }
+        return sources, answer, False
+
     def get_single_answer(
             self, query: str,
             k: int = 3,
@@ -96,13 +135,12 @@ class Generator:
         Raises:
             OSError: If a chunk's source file cannot be read.
         """
-        initial_prompt = self.prompt_builder.prompt
         context_prompt = self.prompt_builder.create_context_prompt(
                     query=query,
                     k=k
                 )
         messages = [
-            {"role": "system", "content": initial_prompt},
+            {"role": "system", "content": self.initial_prompt},
             {"role": "user", "content": context_prompt}
         ]
 
@@ -131,37 +169,43 @@ class Generator:
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{path_}'{ErrorCodes.OS_ERROR.value}") from e
+                f"The file '{path_}'{ErrorCodes.OS_ERROR.value}"
+                f"{Colors.RESET.value}") from e
         return chunk
 
-    def save_student_answer(
+    def get_student_results(
             self,
-            to_save: StudentSearchResultsAndAnswer,
-            output_file_path: str
-            ) -> None:
-        """Write the answers to a JSON file, overwriting it if it exists.
-
-        Args:
-            to_save (StudentSearchResultsAndAnswer): Answers to save.
-            output_file_path (str): Path of the output file.
-
-        Raises:
-            OSError: If the file cannot be written.
-        """
+            student_search_results_path: str) -> StudentSearchResults:
         try:
-            with open(output_file_path, mode='w') as fd:
-                fd.write(to_save.model_dump_json(indent=2))
+            with open(student_search_results_path, mode='r') as fd:
+                student_results = StudentSearchResults.model_validate_json(
+                    fd.read())
         except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
-                f"The file '{output_file_path}'{ErrorCodes.OS_ERROR.value}") \
-                    from e
+                f"The file '{student_search_results_path}' "
+                f"{ErrorCodes.OS_ERROR.value}") from e
+        except pydantic.ValidationError as e:
+            raise ValueError(e)
+        return student_results
 
-        print(
-            f"{Colors.GREEN.value}"
-            f"Saved {Path(output_file_path).name} to "
-            f"... {Path(output_file_path).parent}"
-            f"{Colors.RESET.value}")
+    def get_context_from_json(
+            self,
+            question_: str,
+            sources: list[MinimalSource]) -> str:
+
+        context_prompt = "context: \n"
+        chunk_count = 0
+        for minimal_source in sources:
+            path_ = minimal_source.file_path
+            from_ = minimal_source.first_character_index
+            to_ = minimal_source.last_character_index
+            chunk = self.get_chunk(path_, from_, to_)
+            context_prompt += f"[{chunk_count}] ({path_})\n" \
+                f"{chunk}\n\n"
+            chunk_count += 1
+        context_prompt += f"Question: {question_}\n\nAnswer: "
+        return context_prompt
 
     def get_batch_query_answer(
             self,
@@ -186,50 +230,42 @@ class Generator:
         """
         student_answers: list[MinimalAnswer] = []
         q_counter = 0
-        initial_prompt = self.prompt_builder.prompt
 
-        try:
-            with open(student_search_results_path, mode='r') as fd:
-                student_results = StudentSearchResults.model_validate_json(
-                    fd.read())
-                total_questions = len(student_results.search_results)
-        except OSError as e:
-            raise OSError(
-                f"{Colors.RED.value}[ERROR] - "
-                f"The file '{student_search_results_path}' "
-                f"{ErrorCodes.OS_ERROR.value}") from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
-
+        student_results = self.get_student_results(student_search_results_path)
         max_k = len(student_results.search_results[0].retrieved_sources)
+
+        total_questions = len(student_results.search_results)
+        questions_in_cache = 0
 
         for minimal_search in tqdm(
                 student_results.search_results,
                 desc="Getting dataset answers...",
                 bar_format=TQDM_FMT):
-            context_prompt = "context: \n"
-            chunk_count = 0
             question_ = minimal_search.question
             question_id_ = minimal_search.question_id
             k_ = K_FOR_ANSWER if max_k >= K_FOR_ANSWER else max_k
-            sources = minimal_search.retrieved_sources[0:k_]
+            sources: list[MinimalSource] = \
+                minimal_search.retrieved_sources[0:k_]
 
-            for minimal_source in sources:
-                path_ = minimal_source.file_path
-                from_ = minimal_source.first_character_index
-                to_ = minimal_source.last_character_index
-                chunk = self.get_chunk(path_, from_, to_)
-                context_prompt += f"[{chunk_count}] ({path_})\n" \
-                    f"{chunk}\n\n"
-                chunk_count += 1
-            context_prompt += f"Question: {question_}\n\nAnswer: "
+            prompt_context = self.get_context_from_json(
+                question_,
+                sources)
 
-            messages = [
-                {"role": "system", "content": initial_prompt},
-                {"role": "user", "content": context_prompt}
-                ]
+            # ======= Checking cache =====
+            if self.bonus:
+                sources, answer_, is_in_cache = self._retrieve_with_cache(
+                    question_,
+                    k_,
+                    prompt_context)
+                if is_in_cache:
+                    questions_in_cache += 1
+            else:
+                messages = [
+                    {"role": "system", "content": self.initial_prompt},
+                    {"role": "user", "content": prompt_context}
+                    ]
 
-            answer_ = self.model_launch(messages)
+                answer_ = self.model_launch(messages)
             student_answers.append(
                 MinimalAnswer(
                     question_id=question_id_,
@@ -237,17 +273,61 @@ class Generator:
                     retrieved_sources=sources,
                     answer=answer_))
             q_counter += 1
+        if self.bonus:
+            self.cacher.save_cache(self.cache)
 
         student_result = StudentSearchResultsAndAnswer(
             search_results=student_answers,
             k=k_)
 
-        print(
-            f"{Colors.GREEN.value}"
-            f"Loaded {total_questions} "
-            f"questions ... "
-            f"Processed {q_counter} of "
-            f"{total_questions} questions."
-            f"{Colors.RESET.value}")
+        self.print_result(total_questions, q_counter, questions_in_cache)
         self.save_student_answer(student_result, output_file_path)
         return student_result
+
+    def print_result(
+            self,
+            total_questions: int,
+            questions_processed: int,
+            questions_in_cache: int) -> None:
+        print(
+            f"{Colors.GREEN.value}"
+            f"[INFO] - Loaded {total_questions} "
+            f"questions ... "
+            f"Processed {questions_processed} of "
+            f"{total_questions} questions."
+            f"{Colors.RESET.value}")
+        if self.bonus:
+            print(
+                f"{Colors.GREEN.value}[INFO] - "
+                f"Found {questions_in_cache} questions in cache out of "
+                f"{questions_processed} total questions processed."
+                f"{Colors.RESET.value}")
+
+    def save_student_answer(
+            self,
+            to_save: StudentSearchResultsAndAnswer,
+            output_file_path: str
+            ) -> None:
+        """Write the answers to a JSON file, overwriting it if it exists.
+
+        Args:
+            to_save (StudentSearchResultsAndAnswer): Answers to save.
+            output_file_path (str): Path of the output file.
+
+        Raises:
+            OSError: If the file cannot be written.
+        """
+        try:
+            with open(output_file_path, mode='w') as fd:
+                fd.write(to_save.model_dump_json(indent=2))
+        except OSError as e:
+            raise OSError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"The file '{output_file_path}'{ErrorCodes.OS_ERROR.value}"
+                f"{Colors.RESET.value}") from e
+
+        print(
+            f"{Colors.GREEN.value}"
+            f"Saved {Path(output_file_path).name} to "
+            f"... {Path(output_file_path).parent}"
+            f"{Colors.RESET.value}")

@@ -131,8 +131,9 @@ class Retrieval:
 
         query_tokens = self.tokenize_query(query)
         if self.bonus:
-            if self.embeddings is not None:
-                query_encoded = self.embeddings.encode([query])
+            if self.embeddings is None:
+                self.embeddings = Embeddings()
+            query_encoded = self.embeddings.encode([query])
             bm25_scores = self.bm25_index.get_scores(
                 query_tokens) * self.booster   # type: ignore[no-untyped-call]
             cos_scores = (self.matrix @ query_encoded.numpy().T).ravel()
@@ -224,11 +225,6 @@ class Retrieval:
 
         minimal_result_list = []
         questions_found_cache = 0
-
-        if self.bonus and self.embeddings is None and any(
-            self.cacher.make_key(q.question, k) not in self.cache
-                for q in dataset.rag_questions):
-            self.embeddings = Embeddings()
 
         for question in tqdm(dataset.rag_questions,
                              desc="Getting the dataset chunks...",

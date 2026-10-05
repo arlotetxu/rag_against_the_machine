@@ -46,7 +46,7 @@ app = FastAPI(
 
 @app.get("/")
 def server_status() -> str:
-    return "Server up and running! :-)"
+    return "Server is up and running! :-)"
 
 
 @app.get("/health")

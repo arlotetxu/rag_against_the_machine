@@ -2,6 +2,8 @@
 from src.aux.colors import Colors
 from src.aux.error_desc import ErrorCodes
 from src.retriever.retrieval import Retrieval
+from src.aux.constants import SYSTEM_PROMPT
+
 
 # from icecream import ic
 
@@ -25,13 +27,7 @@ class PromptBuild:
         from disk, so ``index`` must have been run first.
         """
         self.retrieval = Retrieval()
-        self.prompt = \
-            "You are an assistant that answers questions about the vLLM " \
-            "source code and documentation, using ONLY the given portions " \
-            "of context. If the context does not contain the answer, you " \
-            "MUST say that the question cannot be answered with the " \
-            "available information. Do not use external knowledge or make " \
-            "up information.\n"
+        self.prompt = SYSTEM_PROMPT
 
     def create_context_prompt(self, query: str, k: int) -> str:
         """Retrieve the top-k chunks for a query and build the user prompt.

@@ -1,5 +1,7 @@
 import json
+import hashlib
 from pathlib import Path
+from src.aux.constants import SYSTEM_PROMPT, MAX_OUT_TOKENS, MODEL_NAME
 from typing import Any, Optional
 
 
@@ -13,19 +15,24 @@ class CacheHandler():
             return f"{k}::{query}"
         return query
 
-    def load_cache(self) -> dict[str, list[dict[str, Any]]]:
+    def make_answer_key(self, query: str, k: int, prompt_context: str) -> str:
+        prompt_hash = hashlib.sha256(
+            (SYSTEM_PROMPT + prompt_context).encode("utf-8")).hexdigest()[:12]
+        return json.dumps([query, k, MODEL_NAME, MAX_OUT_TOKENS, prompt_hash])
+
+    def load_cache(self) -> dict[str, Any]:
         """Read the cache from disk.
         Returns an empty dict if missing or broken."""
         if not self.cache_path.exists():
             return {}
         try:
             with open(self.cache_path, "r", encoding="utf-8") as fd:
-                data: dict[str, list[dict[str, Any]]] = json.load(fd)
+                data: dict[str, Any] = json.load(fd)
                 return data
         except (OSError, json.JSONDecodeError):
             return {}
 
-    def save_cache(self, cache: dict[str, list[dict[str, Any]]]) -> None:
+    def save_cache(self, cache: dict[str, Any]) -> None:
         """Write the whole cache to disk."""
         try:
             self.cache_path.parent.mkdir(parents=True, exist_ok=True)

@@ -7,12 +7,8 @@ Attributes:
     MODEL_NAME4 (str): Alternative model tried during development.
 """
 from transformers import AutoTokenizer, AutoModelForCausalLM
+from src.aux.constants import MODEL_NAME
 import torch
-
-MODEL_NAME = "Qwen/Qwen3-0.6B"
-MODEL_NAME2 = "HuggingFaceTB/SmolLM2-1.7B-Instruct"
-MODEL_NAME3 = "Qwen/Qwen2.5-0.5B-Instruct"
-MODEL_NAME4 = "HuggingFaceTB/SmolLM2-360M-Instruct"
 
 
 class Model:
