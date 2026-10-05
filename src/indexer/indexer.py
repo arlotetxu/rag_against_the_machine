@@ -46,7 +46,11 @@ class Indexer:
         cache_sources_path = Path(os.path.join(
             PathsAndNames.cache_path.value,
             PathsAndNames.cache_sources_name.value))
+        cache_answer_path = Path(os.path.join(
+            PathsAndNames.cache_path.value,
+            PathsAndNames.cache_answers_name.value))
         cache_sources_path.unlink(missing_ok=True)
+        cache_answer_path.unlink(missing_ok=True)
 
     def get_input_files(self) -> None:
         """Collect every file under the corpus folder into ``files_lst``.
