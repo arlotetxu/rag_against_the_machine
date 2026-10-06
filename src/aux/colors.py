@@ -2,13 +2,18 @@ from enum import Enum
 
 
 class Colors(str, Enum):
+    """ANSI escape codes used to color terminal output.
 
-    """
-    Enum representing ANSI escape codes for various terminal colors.
+    Wrap a message between a color and ``RESET`` so the color does not
+    leak into later output. Use ``.value`` inside f-strings: from Python
+    3.12 on, formatting a member of a ``str`` mixin enum gives its name
+    (``Colors.RED``) instead of the escape code.
 
-    These colors are used for console output to enhance readability
-    and provide visual cues.
+    The first members are the standard 8 colors plus ``BOLD``; the ones
+    from ``PURPLE`` on use the 256-color palette (``38;5;<n>``), which
+    some terminals do not support.
     """
+
     RESET = "\033[0m"
     BLACK = "\033[30m"
     RED = "\033[31m"

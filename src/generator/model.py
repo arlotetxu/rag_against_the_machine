@@ -1,11 +1,4 @@
-"""Loading of the LLM used for answer generation.
-
-Attributes:
-    MODEL_NAME (str): Hugging Face id of the model in use.
-    MODEL_NAME2 (str): Alternative model tried during development.
-    MODEL_NAME3 (str): Alternative model tried during development.
-    MODEL_NAME4 (str): Alternative model tried during development.
-"""
+"""Loading of the LLM used to generate the answers."""
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from src.aux.constants import MODEL_NAME
 import torch

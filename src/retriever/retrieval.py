@@ -1,3 +1,4 @@
+"""Search of the chunks most relevant to a question."""
 import pickle
 import pydantic
 from src.aux.constants import PathsAndNames
@@ -25,8 +26,31 @@ from pathlib import Path
 
 
 class Retrieval:
-    def __init__(self, bonus: bool = False) -> None:
+    """Find the top-k chunks for a question.
 
+    Without ``bonus``, chunks are ranked by their BM25 score. With
+    ``bonus``, the BM25 ranking and the embedding (cosine) ranking are
+    combined with Reciprocal Rank Fusion, and results are cached by query
+    and ``k``.
+    """
+
+    def __init__(self, bonus: bool = False) -> None:
+        """Load the BM25 index, the chunks and, with ``bonus``, the cache.
+
+        The index and the chunks file must come from the same ``index``
+        run, since chunks are matched to BM25 documents by position. With
+        ``bonus`` the embeddings matrix is loaded too, but the embeddings
+        model is only loaded when the first query needs it.
+
+        Args:
+            bonus (bool, optional): Whether to use the hybrid search and
+                the search cache. Defaults to False.
+
+        Raises:
+            OSError: If the index, the chunks file or, with ``bonus``, the
+                embeddings file cannot be read.
+            ValueError: If the chunks file does not match ``RagIndex``.
+        """
         self.tokenizer: Tokenizer = Tokenizer()
         self.bm25_index: BM25Okapi = self.get_bm25_index()
         self.chunks: RagIndex = self.get_chunks()
@@ -53,7 +77,14 @@ class Retrieval:
             self.matrix = torch.from_numpy(np.load(matrix_path))
 
     def get_bm25_index(self) -> Any:
+        """Load the pickled BM25 index built by ``index``.
 
+        Returns:
+            BM25Okapi: The index, with one document per chunk.
+
+        Raises:
+            OSError: If the index file cannot be read.
+        """
         index_parents = PathsAndNames.save_index_path.value
         index_name = PathsAndNames.index_name.value
         path = index_parents + '/' + index_name
@@ -70,7 +101,15 @@ class Retrieval:
         return bm25_index
 
     def get_chunks(self) -> RagIndex:
+        """Load and validate the chunks file built by ``index``.
 
+        Returns:
+            RagIndex: The chunks, in the same order as the BM25 documents.
+
+        Raises:
+            OSError: If the chunks file cannot be read.
+            ValueError: If the file does not match ``RagIndex``.
+        """
         chunks_parents = PathsAndNames.save_chunks.value
         file_name = PathsAndNames.chunks_json.value
         path = chunks_parents + file_name
@@ -89,7 +128,19 @@ class Retrieval:
         return ragindex_chunks
 
     def tokenize_query(self, query: str) -> list[str]:
+        """Turn a query into BM25 terms.
 
+        The query is run through both the code and the text tokenizers,
+        since it may mention identifiers (``max_tokens``) as well as plain
+        words. The tokens of both are merged without duplicates, then
+        stopwords are removed and the rest stemmed.
+
+        Args:
+            query (str): Question to search for.
+
+        Returns:
+            list[str]: The terms, each once, in no particular order.
+        """
         query_tokens = set()
         query_tokens_code = self.tokenizer.tokenize_code(query)
         query_tokens_other = self.tokenizer.tokenize_other(query)
@@ -101,6 +152,15 @@ class Retrieval:
         return query_tokens_lst
 
     def calculate_boosters(self) -> np.ndarray:
+        """Compute a BM25 score multiplier for each chunk.
+
+        If Python chunks make up less than ``MIN_RATIO`` of the index, they
+        get ``BOOST``; else if documentation chunks do, the ``.md``,
+        ``.txt`` and ``.rst`` ones get it. Every other chunk gets 1.0.
+
+        Returns:
+            np.ndarray: One multiplier per chunk, in index order.
+        """
         py_chunks = sum(1
                         for chunk in self.chunks.chunks
                         if chunk.metadata.file_path.endswith('.py')
@@ -121,7 +181,22 @@ class Retrieval:
         return calc_booster
 
     def get_query_scores(self, query: str, k: int) -> Any:
+        """Rank the chunks for a query and return the best k positions.
 
+        BM25 scores are always multiplied by the boosters. With ``bonus``,
+        the query is also embedded and every chunk gets
+        ``1 / (60 + bm25_rank) + 1 / (60 + cosine_rank)`` (Reciprocal Rank
+        Fusion); the chunks are sorted by that value. The first call in
+        bonus mode loads the embeddings model.
+
+        Args:
+            query (str): Question to search for.
+            k (int): Number of chunks to return.
+
+        Returns:
+            list[int]: Positions of the top-k chunks in ``chunks``, best
+                first.
+        """
         def _ranks(scores: np.ndarray) -> np.ndarray:
             """Return the 1-based rank of each position (1 = best score)."""
             order = np.argsort(-scores)
@@ -156,7 +231,15 @@ class Retrieval:
             return scores[:k]
 
     def _retrieve(self, query: str, k: int) -> list[MinimalSource]:
-        """Run the real search, without cache."""
+        """Search for the top-k chunks, without using the cache.
+
+        Args:
+            query (str): Question to search for.
+            k (int): Number of chunks to return.
+
+        Returns:
+            list[MinimalSource]: Location of each chunk found, best first.
+        """
         chunk_indexes = self.get_query_scores(query, k)
 
         return [
@@ -167,10 +250,18 @@ class Retrieval:
             query: str,
             k: int,
     ) -> tuple[list[MinimalSource], bool]:
-        """Look the query up in an already loaded cache.
+        """Return the cached sources for a query, or search and cache them.
 
-        On a miss, run the search and store the result in `cache`.
-        Returns the sources and True if it was a cache hit.
+        Only used with ``bonus``. On a miss, the result is added to
+        ``cache`` in memory but not saved to disk.
+
+        Args:
+            query (str): Question to search for.
+            k (int): Number of chunks to return. Part of the cache key.
+
+        Returns:
+            tuple[list[MinimalSource], bool]: The sources, best first, and
+                True if they came from the cache.
         """
         key = self.cacher.make_key(query, k)
         if key in self.cache.keys():
@@ -184,7 +275,21 @@ class Retrieval:
             query: str,
             k: int,
             print_: bool = False) -> list[MinimalSource]:
+        """Search for the top-k chunks of one query.
 
+        With ``bonus``, the cache is checked first, and on a miss the
+        whole cache is saved to disk right away.
+
+        Args:
+            query (str): Question to search for.
+            k (int): Number of chunks to return.
+            print_ (bool, optional): Whether to print each source as
+                ``path [start:end]``, plus a line on a cache hit. Defaults
+                to False.
+
+        Returns:
+            list[MinimalSource]: Location of each chunk found, best first.
+        """
         is_in_cache = False
         if self.bonus:
             # Checking if the query is already cached
@@ -212,7 +317,26 @@ class Retrieval:
                                dataset_path: str,
                                k: int,
                                save_directory: str) -> StudentSearchResults:
+        """Search the top-k chunks of every dataset question and save them.
 
+        With ``bonus``, each question is looked up in the cache first, and
+        the cache is saved once at the end.
+
+        Args:
+            dataset_path (str): Path to a ``RagDataset`` JSON file.
+            k (int): Number of chunks to retrieve per question.
+            save_directory (str): Path of the results file to write (a
+                file, not a folder).
+
+        Returns:
+            StudentSearchResults: The results, as written to
+                ``save_directory``.
+
+        Raises:
+            OSError: If the dataset cannot be read or the results cannot be
+                written.
+            ValueError: If the dataset does not match ``RagDataset``.
+        """
         try:
             with open(dataset_path, mode='r') as fdc:
                 dataset = RagDataset.model_validate_json(fdc.read())
@@ -225,6 +349,11 @@ class Retrieval:
 
         minimal_result_list = []
         questions_found_cache = 0
+
+        # Loading the embeddings model before the progress bar starts, so
+        # its loading output does not break the bar
+        if self.bonus and self.embeddings is None:
+            self.embeddings = Embeddings()
 
         for question in tqdm(dataset.rag_questions,
                              desc="Getting the dataset chunks...",
@@ -266,6 +395,15 @@ class Retrieval:
             self,
             save_directory: str,
             result: StudentSearchResults) -> None:
+        """Write search results to a JSON file, overwriting it if it exists.
+
+        Args:
+            save_directory (str): Path of the file to write.
+            result (StudentSearchResults): Results to save.
+
+        Raises:
+            OSError: If the file cannot be written.
+        """
         try:
             with open(save_directory, mode='w') as fd:
                 fd.write(result.model_dump_json(indent=2))

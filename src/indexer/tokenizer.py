@@ -50,9 +50,10 @@ class Tokenizer:
     def tokenize_other(self, text: str) -> list[str]:
         """Split prose into lowercase words.
 
-        Any character other than a letter (including Spanish accented
-        letters and ``ñ``) or a digit separates tokens, so ``max_tokens``
-        gives ``max`` and ``tokens``.
+        Only ASCII letters, digits and ``á é í ó ú ñ`` are kept; any other
+        character separates tokens. So ``max_tokens`` gives ``max`` and
+        ``tokens``, and a word with another non-ASCII letter (``ü``,
+        ``è``, ``ç``...) is split at that letter.
 
         Args:
             text (str): Text to tokenize.

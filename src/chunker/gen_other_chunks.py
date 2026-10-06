@@ -54,12 +54,18 @@ class ChunkOther(Chunk):
         zone; otherwise it ends exactly at the limit. The next chunk starts
         ``overlap`` characters before the previous one ended.
 
+        The chunk-id counter restarts at 0 on every call, so calling this
+        method twice on the same ``chunks`` overwrites the earlier ``id_<n>``
+        chunks.
+
         Returns:
             dict[str, IndexedChunk]: The ``chunks`` dictionary, now also
                 holding the chunks of the text files.
 
         Raises:
-            OSError: If a file does not exist or cannot be read
+            FileNotFoundError: If a file does not exist or cannot be read.
+                It is raised for any ``OSError``, including permission
+                errors, with the original error chained as its cause.
         """
         bin_extensions = {
             '.png', '.jpg', '.jpeg', '.gif', '.bmp', '.ico', '.webp',

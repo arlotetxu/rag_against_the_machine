@@ -27,8 +27,9 @@ def main() -> None:
     """Dispatch the CLI subcommand given in ``sys.argv`` via Python Fire.
 
     Available subcommands: ``index``, ``search``, ``search_dataset``,
-    ``answer``, ``answer_dataset`` and ``evaluate``. Fire turns their
-    keyword arguments into command-line flags (e.g. ``--k 5``).
+    ``answer``, ``answer_dataset``, ``evaluate`` and ``serve``.
+    Fire turns their keyword arguments into command-line flags
+    (e.g. ``--k 5``).
     """
     fire.Fire({
         'index': index,

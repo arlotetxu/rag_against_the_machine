@@ -14,8 +14,6 @@ from pydantic import ValidationError
 from src.chunker.gen_code_chunks import ChunkerCode
 from src.chunker.gen_other_chunks import ChunkOther
 from src.indexer.embeddings import Embeddings
-
-
 # from icecream import ic
 
 
@@ -28,14 +26,17 @@ class Indexer:
             bonus: bool = False) -> None:
         """Set the chunking limits and the embedding option.
 
+        Also deletes the search and answer cache files, since their
+        entries point to chunks of the index that is about to be replaced.
+
         Args:
             max_chunk_size (int, optional): Maximum chunk size passed to the
                 chunkers. Values above 800 are capped at 800. Defaults to
                 800.
             min_chunk_tokens (int, optional): Chunks with fewer tokens than
                 this are dropped from the index. Defaults to 10.
-            bonus (str, optional): Whether to include bonus content in the
-                index. Defaults to 'n'.
+            bonus (bool, optional): Whether to also compute and save the
+                chunk embeddings. Defaults to False.
         """
         self.max_chunk = 800 if max_chunk_size > 800 else max_chunk_size
         self.min_chunk_tokens = min_chunk_tokens
@@ -135,7 +136,10 @@ class Indexer:
             bm25_index (BM25Okapi): Index built by ``bm25_index``.
 
         Raises:
-            PermissionError: If either file cannot be written.
+            PermissionError: If either file cannot be written for lack of
+                permissions.
+            OSError: If either file cannot be written for another reason.
+                These errors are not caught here.
             ValueError: If the chunks do not match ``RagIndex``.
         """
         file_2_save = PathsAndNames.index_name.value
@@ -161,8 +165,8 @@ class Indexer:
                 fd.write(RagIndex(chunks=chunk_list).model_dump_json(indent=2))
         except PermissionError as e:
             raise PermissionError(
-                f"{Colors.YELLOW.value}[ERROR] -  "
-                f"The file {path}"
+                f"{Colors.RED.value}[ERROR] -  "
+                f"The file {file_2_save}"
                 f"{ErrorCodes.PERMISSION.value}"
                 f"{Colors.RESET.value}") from e
         except ValidationError as e:
@@ -175,10 +179,15 @@ class Indexer:
     def run(self) -> None:
         """Run the whole ingestion: read, chunk, index and save.
 
+        With ``bonus``, the embeddings of the kept chunks are then computed
+        and saved too, in the same order as the chunks file.
+
         Raises:
-            Exception: If a corpus file is missing or a file cannot be read
-                or written. The original ``FileNotFoundError`` or
-                ``PermissionError`` is turned into a plain ``Exception``.
+            OSError: If any file cannot be read or written. The original
+                error is chained as its cause.
+            ValueError: If the chunks do not match ``RagIndex``.
+            UnicodeDecodeError: If a Python file is not valid UTF-8, or a
+                chunk cut falls inside a multi-byte character.
         """
         try:
             self.get_input_files()

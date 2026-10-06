@@ -25,8 +25,10 @@ class Chunk:
                 file id.
             chunks (dict[str, IndexedChunk]): Chunks produced so far, keyed
                 by chunk id. It is modified in place, not copied.
-            max_chunk_size (int, optional): Maximum number of characters per
-                chunk. Defaults to 2000.
+            max_chunk_size (int, optional): Maximum chunk length. The unit
+                depends on the subclass: bytes of the UTF-8 encoded file for
+                ``ChunkerCode``, characters for ``ChunkOther``. Defaults to
+                2000.
         """
         self.max_chunk = max_chunk_size
         self.chunks: dict[str, IndexedChunk] = chunks

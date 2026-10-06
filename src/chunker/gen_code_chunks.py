@@ -58,8 +58,9 @@ class ChunkerCode(Chunk):
                 and the direct children of the syntax tree's root node.
 
         Raises:
-            FileNotFoundError: If the file does not exist.
-            PermissionError: If the file cannot be read.
+            OSError: If the file does not exist or cannot be read. The
+                original error is chained as its cause.
+            UnicodeDecodeError: If the file is not valid UTF-8.
         """
         try:
             with open(py_path, mode='r', encoding='utf8') as fd:
@@ -94,6 +95,10 @@ class ChunkerCode(Chunk):
             data_b (bytes): UTF-8 encoded content of the file.
             childrens (list[Node]): Top-level nodes of the file's syntax
                 tree.
+
+        Raises:
+            UnicodeDecodeError: If a cut falls inside a multi-byte
+                character.
         """
         children_imports = [
             children for children in childrens if children.type in [
@@ -143,6 +148,8 @@ class ChunkerCode(Chunk):
 
         Raises:
             OSError: If a Python file does not exist or cannot be read.
+            UnicodeDecodeError: If a Python file is not valid UTF-8, or a
+                cut falls inside a multi-byte character.
         """
         py_docs = {id: doc_path for id, doc_path in self.files_lst.items() if
                    self.get_extension(doc_path) == '.py'}
