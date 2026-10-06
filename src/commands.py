@@ -5,7 +5,6 @@ from src.indexer.indexer import Indexer
 from src.retriever.retrieval import Retrieval
 from src.evaluator.evaluate import Evaluate
 from src.generator.generator import Generator
-# from icecream import ic
 
 # ic.configureOutput(includeContext=True)
 
@@ -31,6 +30,7 @@ def index(max_chunk_size: int = 800, bonus: str = 'n') -> None:
     Raises:
         ValueError: If ``max_chunk_size`` is not an integer.
     """
+
     if not isinstance(max_chunk_size, int):
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.CHUNK_SIZE_NOK.value}"
@@ -65,7 +65,7 @@ def search(query: str, k: int = 5, bonus: str = 'n') -> None:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not isinstance(query, str) or len(query) == 0:
+    if not isinstance(query, str) or len(query) == 0 or query.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.QUERY_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -74,8 +74,7 @@ def search(query: str, k: int = 5, bonus: str = 'n') -> None:
                          f"{ErrorCodes.BONUS_NOK.value}"
                          f"{Colors.RESET.value}")
     retrieval = Retrieval(bonus=bonus.lower() == 'y')
-    retrieval.get_query_chunks(
-        query=query, k=k, print_=True)
+    retrieval.get_query_chunks(query=query, k=k, print_=True)
 
 
 def build_output_path(dataset_path: str, save_directory: str) -> Path:
@@ -122,11 +121,13 @@ def search_dataset(
     if not isinstance(k, int) or k < 1:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}")
-    if not isinstance(dataset_path, str) or len(dataset_path) == 0:
+    if not isinstance(dataset_path, str) or len(dataset_path) == 0 or \
+            dataset_path.isspace() or not Path(dataset_path).exists():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not isinstance(save_directory, str) or len(save_directory) == 0:
+    if not isinstance(save_directory, str) or len(save_directory) == 0 or \
+            save_directory.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -158,7 +159,8 @@ def answer(query: str, k: int = 3) -> None:
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not isinstance(query, str) or len(query) == 0:
+    if not isinstance(query, str) or len(query) == 0 or \
+            query.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.QUERY_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -188,12 +190,13 @@ def answer_dataset(student_search_results_path: str,
             (the input would be overwritten).
     """
     if not isinstance(student_search_results_path, str) or \
-            len(student_search_results_path) == 0:
+            len(student_search_results_path) == 0 or \
+            student_search_results_path.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.STUDENT_FILE_NOK.value}"
                          f"{Colors.RESET.value}")
     if not isinstance(save_directory, str) or \
-            len(save_directory) == 0:
+            len(save_directory) == 0 or save_directory.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.SAVE_FOLDER_NOK.value}"
                          f"{Colors.RESET.value}")
@@ -235,12 +238,14 @@ def evaluate(student_search_results_path: str,
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.K_NOK.value}"
                          f"{Colors.RESET.value}")
-    if not isinstance(dataset_path, str) or len(dataset_path) == 0:
+    if not isinstance(dataset_path, str) or len(dataset_path) == 0 or \
+            dataset_path.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.DATASET_PATH_NOK.value}"
                          f"{Colors.RESET.value}")
     if not isinstance(student_search_results_path, str) or \
-            len(student_search_results_path) == 0:
+            len(student_search_results_path) == 0 or \
+            student_search_results_path.isspace():
         raise ValueError(f"{Colors.RED.value}[ERROR] - "
                          f"{ErrorCodes.STUDENT_FILE_NOK.value}"
                          f"{Colors.RESET.value}")
