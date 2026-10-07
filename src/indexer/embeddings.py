@@ -111,10 +111,9 @@ class Embeddings:
             torch.Tensor: Matrix of shape ``(len(texts), hidden_size)`` on
                 the CPU, with one unit-length row per text, in order.
         """
-        batch_size = self.batch_size
         sums = torch.zeros(len(texts), self.model.config.hidden_size)
         counts = torch.zeros(len(texts), 1)
-        starts = range(0, len(texts), batch_size)
+        starts = range(0, len(texts), self.batch_size)
         for start in tqdm(starts, disable=not progress_bar,
                           desc="Generating embeddings...",
                           bar_format=TQDM_FMT):
