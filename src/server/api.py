@@ -189,7 +189,8 @@ def answer_dataset(
     output_path = str(build_output_path(
         student_search_results_path,
         save_directory))
-    student_answer = generator.get_batch_query_answer(
-        student_search_results_path=student_search_results_path,
-        output_file_path=output_path)
+    with generation_lock:
+        student_answer = generator.get_batch_query_answer(
+            student_search_results_path=student_search_results_path,
+            output_file_path=output_path)
     return student_answer

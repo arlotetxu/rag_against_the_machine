@@ -1,7 +1,10 @@
 """Dense embeddings of the chunks, used by the bonus hybrid search."""
 import torch
 from transformers import AutoTokenizer, AutoModel
-from src.aux.constants import PathsAndNames, TQDM_FMT, EMBEDDINGS_BATCH_SIZE
+from src.aux.constants import (
+    PathsAndNames,
+    TQDM_FMT,
+    EMBEDDINGS_BATCH_SIZE)
 from src.aux.colors import Colors
 import os
 from pathlib import Path
@@ -29,6 +32,7 @@ class Embeddings:
             batch_size (int, optional): Number of texts encoded per batch.
                 Defaults to ``EMBEDDINGS_BATCH_SIZE``.
         """
+
         self.batch_size = batch_size
         self.device = "mps" if torch.backends.mps.is_available() \
             else "cuda" if torch.cuda.is_available() else "cpu"
@@ -54,7 +58,7 @@ class Embeddings:
         Raises:
             OSError: If either file cannot be written.
         """
-        self.embeddings_path = os.path.join(
+        embeddings_path = os.path.join(
             PathsAndNames.save_index_path.value,
             PathsAndNames.embeddings_name.value
         )
@@ -70,7 +74,7 @@ class Embeddings:
             "dimension": int(embeddings.shape[1]),
         }
         try:
-            np.save(self.embeddings_path, embeddings.numpy())
+            np.save(embeddings_path, embeddings.numpy())
             embeddings_info_path = os.path.join(
                 PathsAndNames.save_index_path.value,
                 PathsAndNames.embeddings_info_name.value
@@ -84,7 +88,7 @@ class Embeddings:
                 f"{Colors.RESET.value}") from e
         print(
             f"{Colors.GREEN.value}"
-            f"Embeddings saved under {self.embeddings_path}."
+            f"Embeddings saved under {embeddings_path}."
             f"{Colors.RESET.value}")
 
     def encode(

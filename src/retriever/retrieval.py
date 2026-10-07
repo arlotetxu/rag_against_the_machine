@@ -62,7 +62,6 @@ class Retrieval:
                 PathsAndNames.cache_path.value,
                 PathsAndNames.cache_sources_name.value)))
             self.cache = self.cacher.load_cache()
-            # self.embeddings = Embeddings()
             matrix_path = os.path.join(
                 PathsAndNames.save_index_path.value,
                 PathsAndNames.embeddings_name.value
@@ -92,11 +91,11 @@ class Retrieval:
         try:
             with open(path, mode='rb') as fd:
                 bm25_index = pickle.load(fd)
-        except OSError:
+        except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The index file '{path}'{ErrorCodes.OS_ERROR.value}"
-                )
+                ) from e
 
         return bm25_index
 
@@ -117,11 +116,11 @@ class Retrieval:
         try:
             with open(path, mode='r') as fd:
                 ragindex_chunks = RagIndex.model_validate_json(fd.read())
-        except OSError:
+        except OSError as e:
             raise OSError(
                 f"{Colors.RED.value}[ERROR] - "
                 f"The chunks file '{path}'{ErrorCodes.OS_ERROR.value}"
-                )
+                ) from e
         except pydantic.ValidationError as e:
             raise ValueError(e)
 
@@ -167,6 +166,12 @@ class Retrieval:
                         )
         doc_chunks = len(self.chunks.chunks) - py_chunks
         total_chunks = len(self.chunks.chunks)
+        if total_chunks == 0:
+            raise ValueError(
+                f"{Colors.RED.value}[ERROR] - "
+                f"{ErrorCodes.NO_CHUNKS.value}"
+                f"{Colors.RESET.value}")
+
         if (py_chunks / total_chunks) < MIN_RATIO:
             calc_booster = np.array([
                 BOOST if chunk.metadata.file_path.endswith('.py')
@@ -413,8 +418,6 @@ class Retrieval:
                 f"The file '{save_directory}'{ErrorCodes.OS_ERROR.value}"
                 f"{Colors.RESET.value}") \
                     from e
-        except pydantic.ValidationError as e:
-            raise ValueError(e)
         print(f"{Colors.GREEN.value}"
               f"Saved student_search_results to "
               f"{save_directory}{Colors.RESET.value}")

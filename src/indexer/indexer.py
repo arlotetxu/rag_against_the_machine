@@ -43,15 +43,19 @@ class Indexer:
         self.files_lst: dict[str, str] = {}
         self.chunks: dict[str, IndexedChunk] = {}
         self.bonus = bonus
-        # Deleting the cache files since the index is being rebuilt
-        cache_sources_path = Path(os.path.join(
+        # Getting the cache files and embeddings index to be deleted in run()
+        self.cache_sources_path = Path(os.path.join(
             PathsAndNames.cache_path.value,
             PathsAndNames.cache_sources_name.value))
-        cache_answer_path = Path(os.path.join(
+        self.cache_answer_path = Path(os.path.join(
             PathsAndNames.cache_path.value,
             PathsAndNames.cache_answers_name.value))
-        cache_sources_path.unlink(missing_ok=True)
-        cache_answer_path.unlink(missing_ok=True)
+        self.embeddings_path = Path(os.path.join(
+            PathsAndNames.save_index_path.value,
+            PathsAndNames.embeddings_name.value))
+        self.embeddings_info_path = Path(os.path.join(
+                PathsAndNames.save_index_path.value,
+                PathsAndNames.embeddings_info_name.value))
 
     def get_input_files(self) -> None:
         """Collect every file under the corpus folder into ``files_lst``.
@@ -201,6 +205,11 @@ class Indexer:
                 max_chunk_size=self.max_chunk
             ).chunk_others()
             bm25_index = self.bm25_index()
+            # Deleting previous indexes versions and embedding cache
+            self.cache_sources_path.unlink(missing_ok=True)
+            self.cache_answer_path.unlink(missing_ok=True)
+            self.embeddings_path.unlink(missing_ok=True)
+            self.embeddings_info_path.unlink(missing_ok=True)
             self.save_index_chunks(bm25_index)
             if self.bonus:
                 embedder = Embeddings()

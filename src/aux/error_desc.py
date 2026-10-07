@@ -52,3 +52,5 @@ class ErrorCodes(Enum):
 
     BONUS_NOK = "The bonus value introduced is not a valid "\
         "boolean (y/n)."
+
+    NO_CHUNKS = "There are no chunks created. Please, check the process..."
