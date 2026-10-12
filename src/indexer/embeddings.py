@@ -1,5 +1,7 @@
 """Dense embeddings of the chunks, used by the bonus hybrid search."""
+import os
 import torch
+torch.set_num_threads(max(1, (os.cpu_count() or 4) - 2))
 from transformers import AutoTokenizer, AutoModel
 from src.aux.constants import (
     PathsAndNames,

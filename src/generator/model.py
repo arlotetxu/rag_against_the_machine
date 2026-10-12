@@ -1,7 +1,9 @@
 """Loading of the LLM used to generate the answers."""
+import os
 from transformers import AutoTokenizer, AutoModelForCausalLM
 from src.aux.constants import MODEL_NAME
 import torch
+torch.set_num_threads(max(1, os.cpu_count() - 2))
 
 
 class Model:
